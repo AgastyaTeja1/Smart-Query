@@ -42,7 +42,7 @@ A full-stack TypeScript web application that lets you connect to SQL databases, 
    ```bash
    git clone https://github.com/<your-username>/SmartQueryAI.git
    cd SmartQueryAI
-  ```
+   ```
 2. **Install dependencies**
   ```bash
   npm install
