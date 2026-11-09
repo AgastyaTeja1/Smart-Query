@@ -10,3 +10,4 @@ data/*.db*
 test-results
 playwright-report
 .vite
+e2e/.tmp

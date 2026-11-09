@@ -59,6 +59,8 @@ export function createApp(deps: AppDeps) {
   app.disable('x-powered-by');
   if (cfg.TRUST_PROXY) app.set('trust proxy', 1);
   const isProd = cfg.NODE_ENV === 'production';
+  /** Test helpers (outbox, limit reset) exist outside production, or on an explicitly mock-payment staging deploy. */
+  const devRoutes = !isProd || cfg.ALLOW_MOCK_PAYMENTS;
 
   const limits = {
     license: rateLimit({ windowMs: 60_000, max: 30, name: 'license' }),
@@ -75,7 +77,7 @@ export function createApp(deps: AppDeps) {
       res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
       res.setHeader(
         'Content-Security-Policy',
-        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'self' https://us.i.posthog.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com",
+        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self' https://us-assets.i.posthog.com; connect-src 'self' https://us.i.posthog.com https://us-assets.i.posthog.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com",
       );
     }
     next();
@@ -282,7 +284,7 @@ label{display:block;font-size:13px;color:#6e6e73;margin-bottom:6px}input[type=em
     }
   });
 
-  if (!isProd) {
+  if (devRoutes) {
     app.get('/dev/outbox', (req, res) => {
       const to = req.query.to ? String(req.query.to) : null;
       const rows = to

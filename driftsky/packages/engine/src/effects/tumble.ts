@@ -81,6 +81,39 @@ export class Tumble extends Effect {
     while (this.items.length > n) this.items.pop();
   }
 
+  override settle(seconds: number) {
+    const w = this.world;
+    if (seconds <= 0 || w.width < 2) return;
+    this.prewarm();
+    let vySum = 0;
+    for (const it of this.items) if (it.depth > 0.3) vySum += (this.cfg.fall[0] + this.cfg.fall[1]) / 2;
+    const flux = vySum / (w.width + 140) / (w.height + 60);
+    for (const s of w.surfaces) {
+      const cap = this.restCap(s);
+      const want = Math.min(cap, Math.round(flux * Math.min(seconds, this.cfg.restLife[1]) * s.rect.w));
+      let placed = this.rest.filter((r) => r.sid === s.id).length;
+      for (let tries = 0; placed < want && tries < want * 4; tries++) {
+        const x = s.left + this.rng.range(4, s.rect.w - 4);
+        if (s.kind !== 'ground' && !w.exposed(s, x)) continue;
+        const life = this.rng.range(...this.cfg.restLife);
+        this.rest.push({
+          sid: s.id,
+          lx: x - s.left,
+          ly: 0,
+          rot: this.rng.range(0, Math.PI * 2),
+          flip: this.rng.range(0.4, 1),
+          size: this.rng.range(...this.cfg.size) * this.rng.range(0.75, 1.1),
+          variant: this.rng.int(0, this.cfg.variants - 1),
+          age: this.rng.range(0, Math.min(seconds, life * 0.7)),
+          life,
+          order: this.orderSeq++,
+        });
+        placed++;
+      }
+    }
+    if (this.cfg.stack) this.restack();
+  }
+
   override prewarm() {
     while (this.items.length < this.want()) this.items.push(this.spawn(true));
   }

@@ -122,6 +122,18 @@ export class WeatherEngine {
     fx.drawFree(ctx);
   }
 
+  /**
+   * Fast-forward the *settled* state: apply the current windows, then place what `seconds` of
+   * weather would have piled up, and fill the air with particles. Used so demos start mid-storm.
+   */
+  settle(seconds: number) {
+    this.world.sync(1 / 60);
+    for (const s of this.world.drainRemoved()) this.effect?.onRemoved(s);
+    if (!this.effect) return;
+    this.effect.prewarm();
+    this.effect.settle(Math.max(0, Math.min(600, seconds || 0)));
+  }
+
   clear() {
     const id = this.effectId;
     this.effectId = 'off';

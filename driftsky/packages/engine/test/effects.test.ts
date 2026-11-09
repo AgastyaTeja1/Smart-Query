@@ -320,3 +320,53 @@ describe('WeatherEngine', () => {
     expect(perFrame).toBeLessThan(4); // ms per simulated frame
   });
 });
+
+describe('settle()', () => {
+  it('produces piles comparable to really simulating, in a fraction of the time', () => {
+    const sim = makeEngine('snow', { seed: 9 });
+    sim.setWindows([win('a', 300, 300, 700, 400)]);
+    sim.active!.prewarm();
+    run(sim, 60);
+    const real = snowOn(sim, 'w:a');
+
+    const fast = makeEngine('snow', { seed: 9 });
+    fast.setWindows([win('a', 300, 300, 700, 400)]);
+    const t0 = performance.now();
+    fast.settle(60);
+    const ms = performance.now() - t0;
+    const settled = snowOn(fast, 'w:a');
+    expect(ms).toBeLessThan(40);
+    expect(settled).toBeGreaterThan(real * 0.5);
+    expect(settled).toBeLessThan(real * 2);
+    expect(fast.stats().particles).toBeGreaterThan(100);
+  });
+
+  it('respects occlusion when settling', () => {
+    const e = makeEngine('snow');
+    e.setWindows([win('front', 200, 150, 400, 500), win('back', 100, 300, 900, 400)]);
+    e.settle(90);
+    const back = (e.active as Snow).piles.get('w:back')!;
+    for (let lx = 150; lx < 450; lx += 3) expect(back.heightAt(lx)).toBe(0);
+    expect(back.volume()).toBeGreaterThan(100);
+  });
+
+  it('places resting petals and leaves within their caps', () => {
+    for (const id of ['sakura', 'leaves'] as const) {
+      const e = makeEngine(id);
+      e.setWindows([win('a', 300, 300, 700, 400)]);
+      e.settle(60);
+      const t = e.active as Tumble;
+      const onWin = t.rest.filter((r) => r.sid === 'w:a').length;
+      expect(onWin).toBeGreaterThan(3);
+      expect(onWin).toBeLessThanOrEqual(Math.max(3, Math.floor(7 * t.cfg.restPer100)));
+    }
+  });
+
+  it('is a no-op for effects with nothing to settle, and for off', () => {
+    for (const id of ['rain', 'fireflies', 'starfall', 'off'] as const) {
+      const e = makeEngine(id);
+      e.setWindows([win('a', 300, 300, 700, 400)]);
+      expect(() => e.settle(60)).not.toThrow();
+    }
+  });
+});

@@ -59,6 +59,11 @@ export abstract class Effect {
   }
   /** Spawn a full screen of particles immediately instead of waiting for them to fall in. */
   prewarm(): void {}
+  /**
+   * Place what `seconds` of weather would have left on surfaces (snow piles, resting petals and
+   * leaves) without simulating it frame by frame. Cheap: proportional to surface width.
+   */
+  settle(_seconds: number): void {}
   bump(key: keyof EngineStats, n = 1) {
     (this.counters as Record<string, number>)[key] = ((this.counters as Record<string, number>)[key] ?? 0) + n;
   }

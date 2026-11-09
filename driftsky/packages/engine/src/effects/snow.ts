@@ -65,6 +65,35 @@ export class Snow extends Effect {
     while (this.flakes.length > n) this.flakes.pop();
   }
 
+  override settle(seconds: number) {
+    const w = this.world;
+    if (seconds <= 0 || w.width < 2) return;
+    this.prewarm();
+    // landing flux of the current flake population: landers per px of width per second
+    let vySum = 0;
+    let r2Sum = 0;
+    let n = 0;
+    for (const f of this.flakes) {
+      if (f.depth <= 0.35) continue;
+      vySum += f.vy;
+      r2Sum += f.r * f.r;
+      n++;
+    }
+    if (!n) return;
+    const flux = vySum / (w.width + 100) / (w.height + 30);
+    const meanAmount = ((Math.PI * (r2Sum / n)) / CELL) * GAIN * 1.8;
+    for (const s of w.surfaces) {
+      const p = this.pile(s);
+      const landings = Math.round(flux * seconds * s.rect.w);
+      for (let i = 0; i < landings; i++) {
+        const x = s.left + this.rng.range(0, s.rect.w);
+        if (s.kind !== 'ground' && !w.exposed(s, x)) continue;
+        p.add(x - s.left, meanAmount * this.rng.range(0.5, 1.5));
+      }
+      if (s.kind === 'ground') p.melt(0.08 * seconds * 0.5);
+    }
+  }
+
   override prewarm() {
     const n = this.want();
     while (this.flakes.length < n) this.flakes.push(this.spawn(true));
