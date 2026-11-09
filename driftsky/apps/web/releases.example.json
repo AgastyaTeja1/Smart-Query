@@ -1,0 +1,15 @@
+{
+  "mac": {
+    "latest": "1.0.0",
+    "minimum": "1.0.0",
+    "url": "https://downloads.example.com/driftsky/1.0.0/Driftsky-1.0.0-universal.dmg",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "notes": "First release."
+  },
+  "windows": {
+    "latest": "1.0.0",
+    "minimum": "1.0.0",
+    "url": "https://downloads.example.com/driftsky/1.0.0/Driftsky-Setup-1.0.0.exe",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}
