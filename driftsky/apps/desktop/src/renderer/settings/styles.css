@@ -371,7 +371,9 @@ button {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--blue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/14px no-repeat;
+  background: var(--blue)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center/14px no-repeat;
   box-shadow: 0 0 0 2px #fff;
 }
 
@@ -415,7 +417,12 @@ button {
 .key-form input {
   flex: 1;
   min-width: 0;
-  font: 15px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font:
+    15px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
   letter-spacing: 0.5px;
   padding: 8px 12px;
   border-radius: 8px;

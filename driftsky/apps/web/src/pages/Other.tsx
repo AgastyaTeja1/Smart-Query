@@ -7,7 +7,7 @@ type SessionState =
   | { status: 'loading' }
   | { status: 'pending' }
   | { status: 'paid'; email: string; key: string; seats: number; plan: string }
-  | { status: 'expired' | 'missing' | 'error' };
+  | { status: 'expired' | 'missing' | 'error' | 'revoked' | 'slow' };
 
 /** After checkout: show the key straight away (it's emailed too), polling until the payment confirms. */
 export function Thanks() {
@@ -19,16 +19,28 @@ export function Thanks() {
     if (!id) return setS({ status: 'missing' });
     let stop = false;
     let tries = 0;
+    // poll quickly at first, then back off; give up politely after ~3 minutes
+    const again = () => {
+      tries++;
+      if (tries > 45) return setS({ status: 'slow' });
+      setTimeout(poll, Math.min(8000, 1200 + tries * 250));
+    };
     const poll = async () => {
+      if (stop) return;
       try {
         const r = await fetch(`/api/checkout/session?id=${encodeURIComponent(id)}`);
+        if (stop) return;
         if (r.status === 404 || r.status === 400) return setS({ status: 'missing' });
+        if (!r.ok) return again(); // rate limited or a server hiccup: keep waiting, don't give up
         const j = await r.json();
         if (stop) return;
+        if (j.status === 'pending') {
+          setS((prev) => (prev.status === 'slow' ? prev : { status: 'pending' }));
+          return again();
+        }
         setS(j);
-        if (j.status === 'pending' && tries++ < 40) setTimeout(poll, 1500);
       } catch {
-        if (!stop) setS({ status: 'error' });
+        again();
       }
     };
     poll();
@@ -68,6 +80,21 @@ export function Thanks() {
           <DownloadButtons />
           <p className="fine">Open Driftsky, paste the key, pick the weather.</p>
         </>
+      ) : s.status === 'slow' ? (
+        <>
+          <h1 className="display small">Still confirming your payment.</h1>
+          <p className="lede">Some payment methods take a few minutes. You don’t need to stay here: your key will arrive by email as soon as it’s through.</p>
+          <p className="fine">
+            Nothing after an hour? Write to <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+          </p>
+        </>
+      ) : s.status === 'revoked' ? (
+        <>
+          <h1 className="display small">This order was refunded.</h1>
+          <p className="lede">
+            Its key has been turned off. Questions? Write to <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+          </p>
+        </>
       ) : s.status === 'pending' || s.status === 'loading' ? (
         <>
           <h1 className="display small">Confirming your payment…</h1>
@@ -94,7 +121,11 @@ export function LostKey() {
     e.preventDefault();
     setState({ kind: 'busy' });
     try {
-      const r = await fetch('/api/license/resend', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim() }) });
+      const r = await fetch('/api/license/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
       const j = await r.json().catch(() => ({}));
       setState(r.ok ? { kind: 'done', msg: j.message } : { kind: 'error', msg: j.message ?? 'That didn’t work. Try again in a minute.' });
     } catch {
@@ -118,7 +149,15 @@ export function LostKey() {
           <label htmlFor="lk-email" className="sr-only">
             Email
           </label>
-          <input id="lk-email" type="email" required autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input
+            id="lk-email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
           <button className="btn-primary" disabled={state.kind === 'busy'}>
             {state.kind === 'busy' ? 'Sending…' : 'Send my key'}
           </button>

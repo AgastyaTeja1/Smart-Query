@@ -123,7 +123,11 @@ test('first run: onboarding, activation, choosing weather, and the overlay', asy
 
     const menu = await hooks<any[]>(ctx.app, 'menu');
     expect(menu[0].label).toBe('Rain');
-    expect(menu.find((i) => i.id === 'license').label).toBe(`${email} · 1 of 5 computers`);
+    // long addresses are shortened so the menu stays narrow
+    const label = menu.find((i) => i.id === 'license').label as string;
+    expect(label).toMatch(/ · 1 of 5 computers$/);
+    expect(email.startsWith(label.split(' · ')[0].replace('…', ''))).toBe(true);
+    expect(label.length).toBeLessThanOrEqual(32 + ' · 1 of 5 computers'.length);
     expect(errors).toEqual([]);
   } finally {
     await ctx.app.close();
@@ -183,9 +187,15 @@ test('battery saver, pauses and full-screen apps', async ({ request }) => {
     await expect.poll(async () => (await overlayStats(ctx.app)).running).toBe(false);
     await hooks(ctx.app, 'setPaused', null);
     await expect.poll(async () => (await overlayStats(ctx.app)).running).toBe(true);
+    // locked, then asleep, then awake: still locked until unlocked
+    for (const ev of ['lock-screen', 'suspend', 'resume']) await hooks(ctx.app, 'power', ev);
+    expect((await hooks<any>(ctx.app, 'state')).paused).toBe('locked');
+    await hooks(ctx.app, 'power', 'unlock-screen');
+    await expect.poll(async () => (await overlayStats(ctx.app)).running).toBe(true);
 
     writeWindows(ctx, [{ id: 'video', x: 0, y: 0, w: 1440, h: 900 }]);
     await expect.poll(async () => (await overlayStats(ctx.app)).config.paused).toBe(true);
+    await expect.poll(async () => (await hooks<any[]>(ctx.app, 'menu'))[0].label).toMatch(/paused for full screen/);
     await expect.poll(async () => (await overlayStats(ctx.app)).running).toBe(false);
     writeWindows(ctx, [{ id: 'editor', x: 300, y: 260, w: 760, h: 420 }]);
     await expect.poll(async () => (await overlayStats(ctx.app)).running).toBe(true);
@@ -212,7 +222,11 @@ test('wallpapers, effects menu, amount, behind windows, and settings survive a r
     await page.getByRole('tab', { name: 'Wallpapers' }).click();
     await page.locator('.wp[data-wallpaper=autumn]').click();
     await expect(page.getByRole('status')).toHaveText('Autumn is now your wallpaper.');
-    const logged = fs.readFileSync(ctx.wallpaperLog, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    const logged = fs
+      .readFileSync(ctx.wallpaperLog, 'utf8')
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l));
     expect(logged.at(-1).id).toBe('autumn');
     expect(fs.existsSync(logged.at(-1).path)).toBe(true); // copied out where the OS can read it
     await hooks(ctx.app, 'runMenu', 'wallpaper-stars');
@@ -230,11 +244,18 @@ test('wallpapers, effects menu, amount, behind windows, and settings survive a r
     await page.getByRole('switch', { name: /Weather/ }).click();
     await expect.poll(async () => (await overlayStats(ctx.app)).effect).toBe('fireflies');
 
-    await page.getByRole('switch', { name: /Behind windows/ }).click();
-    await expect.poll(async () => (await hooks<any[]>(ctx.app, 'overlays'))[0]?.alwaysOnTop).toBe(false);
-    await expect.poll(async () => (await overlayStats(ctx.app))?.surfaces).toBe(1); // only the bottom of the screen
-    await page.getByRole('switch', { name: /Behind windows/ }).click();
-    await expect.poll(async () => (await hooks<any[]>(ctx.app, 'overlays'))[0]?.alwaysOnTop).toBe(true);
+    if ((await hooks<any>(ctx.app, 'state')).canGoBehind) {
+      await page.getByRole('switch', { name: /Behind windows/ }).click();
+      await expect.poll(async () => (await hooks<any[]>(ctx.app, 'overlays'))[0]?.alwaysOnTop).toBe(false);
+      await expect.poll(async () => (await overlayStats(ctx.app))?.surfaces).toBe(1); // only the bottom of the screen
+      await page.getByRole('switch', { name: /Behind windows/ }).click();
+      await expect.poll(async () => (await hooks<any[]>(ctx.app, 'overlays'))[0]?.alwaysOnTop).toBe(true);
+    } else {
+      // only offered where the OS has a real desktop window level (macOS)
+      await expect(page.getByRole('switch', { name: /Behind windows/ })).toHaveCount(0);
+      expect((await hooks<any[]>(ctx.app, 'menu')).map((i) => i.id)).not.toContain('behind');
+      expect(await page.evaluate(() => (window as any).driftsky.setSettings({ behindWindows: true }))).toMatchObject({ ok: false });
+    }
 
     await page.getByRole('tab', { name: 'Settings' }).click();
     await page.getByRole('switch', { name: /Open at login/ }).click();
@@ -245,7 +266,9 @@ test('wallpapers, effects menu, amount, behind windows, and settings survive a r
   // restart with the same profile: everything is remembered, no onboarding again
   const again = await launch({ dir: ctx.dir });
   try {
-    await expect.poll(async () => (await hooks<any>(again.app, 'state')).settings).toMatchObject({ effect: 'fireflies', wallpaper: 'stars', intensity: 0.5, openAtLogin: false, onboarded: true });
+    await expect
+      .poll(async () => (await hooks<any>(again.app, 'state')).settings)
+      .toMatchObject({ effect: 'fireflies', wallpaper: 'stars', intensity: 0.5, openAtLogin: false, onboarded: true });
     expect((await hooks<any>(again.app, 'state')).license.status).toBe('active');
     await expect.poll(async () => (await overlayStats(again.app))?.effect).toBe('fireflies');
     await again.app.waitForEvent('window', { timeout: 3000 }).catch(() => null);
@@ -279,6 +302,9 @@ test('license tab: details, seat limits, removing and moving a key', async ({ re
     await expect(page.getByTestId('license-key')).toContainText('••••');
     await page.getByRole('button', { name: 'Show' }).click();
     await expect(page.getByTestId('license-key')).toHaveText(key);
+    await page.getByRole('button', { name: 'Copy' }).click();
+    await expect(page.getByRole('status')).toHaveText('Key copied.');
+    expect(await ctx.app.evaluate(({ clipboard }) => clipboard.readText())).toBe(key);
     await expect(page.getByRole('button', { name: 'Upgrade to 5 computers' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Remove key…' }).click();
@@ -307,9 +333,15 @@ test('a key removed or revoked elsewhere stops the weather and says why', async 
     await request.post(`${API}/api/license/deactivate`, { data: { key, device } });
     await hooks(ctx.app, 'validate');
     await expect.poll(async () => (await overlayStats(ctx.app)).running).toBe(false);
-    await page.getByRole('tab', { name: 'License' }).click();
+    // the License tab opens by itself and explains
+    await expect(page.getByRole('heading', { name: 'License' })).toBeVisible();
     await expect(page.locator('.notice.bad')).toHaveText(/removed from the key/);
     expect((await hooks<any[]>(ctx.app, 'menu'))[0].label).toMatch(/needs your key/);
+    await page.getByRole('button', { name: 'Check again' }).click();
+    await expect(page.getByRole('alert')).toHaveText(/removed from the key/);
+    await page.getByRole('button', { name: 'Add this computer again' }).click();
+    await expect.poll(async () => (await overlayStats(ctx.app)).running).toBe(true);
+    await expect(page.getByTestId('license-email')).toBeVisible();
   } finally {
     await ctx.app.close();
   }
@@ -353,7 +385,13 @@ test('updates: up to date, then a verified download of a new version, and a tamp
     fs.writeFileSync(path.join(TMP, 'files', 'Driftsky-1.1.0.dmg'), installer);
     const sha = crypto.createHash('sha256').update(installer).digest('hex');
     const write = (s: string) =>
-      fs.writeFileSync(releases, JSON.stringify({ mac: { latest: '1.1.0', url: `${API}/files/Driftsky-1.1.0.dmg`, sha256: s, notes: 'Hail is here.' }, windows: { latest: '1.1.0', url: `${API}/files/Driftsky-1.1.0.dmg`, sha256: s } }));
+      fs.writeFileSync(
+        releases,
+        JSON.stringify({
+          mac: { latest: '1.1.0', url: `${API}/files/Driftsky-1.1.0.dmg`, sha256: s, notes: 'Hail is here.' },
+          windows: { latest: '1.1.0', url: `${API}/files/Driftsky-1.1.0.dmg`, sha256: s },
+        }),
+      );
 
     write('0'.repeat(64)); // wrong checksum first
     await page.getByRole('button', { name: 'Check for updates' }).click();
@@ -382,7 +420,25 @@ test('the settings window is locked down', async () => {
     expect(await page.evaluate(() => typeof (window as any).require)).toBe('undefined');
     expect(await page.evaluate(() => typeof (window as any).process)).toBe('undefined');
     expect(await page.evaluate(() => Object.keys((window as any).driftsky).sort())).toEqual(
-      ['activate', 'buy', 'checkUpdates', 'finishOnboarding', 'getState', 'installUpdate', 'onNavigate', 'onState', 'openLink', 'preview', 'removeKey', 'setEffect', 'setSettings', 'setWallpaper', 'upgrade'].sort(),
+      [
+        'activate',
+        'buy',
+        'checkUpdates',
+        'copyKey',
+        'recheck',
+        'finishOnboarding',
+        'getState',
+        'installUpdate',
+        'onNavigate',
+        'onState',
+        'openLink',
+        'preview',
+        'removeKey',
+        'setEffect',
+        'setSettings',
+        'setWallpaper',
+        'upgrade',
+      ].sort(),
     );
     // bad input over IPC is rejected, not trusted
     expect(await page.evaluate(() => (window as any).driftsky.setEffect('hail'))).toMatchObject({ ok: false });

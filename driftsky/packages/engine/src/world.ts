@@ -143,7 +143,6 @@ export class World {
       if (![w.x, w.y, w.w, w.h].every(Number.isFinite)) continue;
       // windows entirely off this screen can't hold anything
       if (w.x + w.w < 0 || w.x > this.width || w.y > this.height || w.y + w.h < 0) continue;
-      // a window filling the screen has its top edge under the menu bar: nothing lands there
       upsert('w:' + w.id, 'window', w);
     }
     if (this.floorRect) upsert('dock', 'dock', this.floorRect);

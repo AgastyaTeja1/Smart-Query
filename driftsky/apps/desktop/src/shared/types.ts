@@ -59,6 +59,8 @@ export interface AppState {
   running: boolean;
   paused: null | 'locked' | 'suspended' | 'fullscreen';
   onBattery: boolean;
+  /** "Behind windows" is only offered where it works properly (macOS). */
+  canGoBehind: boolean;
   links: { site: string; buy: string; privacy: string; terms: string; lostKey: string; support: string };
 }
 

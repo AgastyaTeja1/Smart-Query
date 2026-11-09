@@ -13,7 +13,11 @@ import { ReleaseStore, compareVersions } from '../server/releases';
 import { generateKey, normalizeKey } from '../server/licenses';
 
 const WHSEC = 'whsec_test_secret';
-const dev = (n: number) => crypto.createHash('sha256').update('device-' + n).digest('hex');
+const dev = (n: number) =>
+  crypto
+    .createHash('sha256')
+    .update('device-' + n)
+    .digest('hex');
 
 function setup(over: Record<string, string> = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ds-'));
@@ -71,6 +75,7 @@ describe('license keys', () => {
     expect(normalizeKey('DRIFT-AB12-CD34-EF56-GH7')).toBeNull();
     expect(normalizeKey('DRIFT-AB12-CD34-EF56-GH78X')).toBeNull();
     expect(normalizeKey('DRIFT-AB12-CD34-EF56-GH7!')).toBeNull();
+    expect(normalizeKey('License key: DRIFT-AB12-CD34-EF56-GH78.')).toBe(k);
     expect(normalizeKey(42)).toBeNull();
     expect(normalizeKey('')).toBeNull();
   });
@@ -79,10 +84,22 @@ describe('license keys', () => {
 describe('config', () => {
   it('refuses mock payments and the dev salt in production', () => {
     expect(() => loadConfig({ NODE_ENV: 'production' } as NodeJS.ProcessEnv)).toThrow(/PAYMENTS=mock/);
-    expect(() => loadConfig({ NODE_ENV: 'production', PAYMENTS: 'stripe', STRIPE_SECRET_KEY: 'sk', STRIPE_WEBHOOK_SECRET: 'wh' } as NodeJS.ProcessEnv)).toThrow(/DEVICE_SALT/);
+    expect(() => loadConfig({ NODE_ENV: 'production', PAYMENTS: 'stripe', STRIPE_SECRET_KEY: 'sk', STRIPE_WEBHOOK_SECRET: 'wh' } as NodeJS.ProcessEnv)).toThrow(
+      /DEVICE_SALT/,
+    );
     expect(() => loadConfig({ PAYMENTS: 'stripe' } as NodeJS.ProcessEnv)).toThrow(/STRIPE_SECRET_KEY/);
     expect(() => loadConfig({ MAIL: 'resend' } as NodeJS.ProcessEnv)).toThrow(/RESEND_API_KEY/);
-    expect(loadConfig({ NODE_ENV: 'production', PAYMENTS: 'stripe', STRIPE_SECRET_KEY: 'sk', STRIPE_WEBHOOK_SECRET: 'wh', DEVICE_SALT: 'x'.repeat(32) } as NodeJS.ProcessEnv).PAYMENTS).toBe('stripe');
+    expect(
+      loadConfig({
+        NODE_ENV: 'production',
+        PAYMENTS: 'stripe',
+        STRIPE_SECRET_KEY: 'sk',
+        STRIPE_WEBHOOK_SECRET: 'wh',
+        DEVICE_SALT: 'x'.repeat(32),
+        MAIL: 'resend',
+        RESEND_API_KEY: 're',
+      } as NodeJS.ProcessEnv).PAYMENTS,
+    ).toBe('stripe');
   });
 });
 
@@ -178,13 +195,19 @@ describe('activation', () => {
 
   it('moves a key: remove from the old computer, add to the new one', async () => {
     await activate({ key, device: dev(1) });
-    const rm = await request(t.app).post('/api/license/deactivate').send({ key, device: dev(1) });
+    const rm = await request(t.app)
+      .post('/api/license/deactivate')
+      .send({ key, device: dev(1) });
     expect(rm.body).toEqual({ ok: true, removed: true });
-    const rm2 = await request(t.app).post('/api/license/deactivate').send({ key, device: dev(1) });
+    const rm2 = await request(t.app)
+      .post('/api/license/deactivate')
+      .send({ key, device: dev(1) });
     expect(rm2.body).toEqual({ ok: true, removed: false });
     expect((await activate({ key, device: dev(2) })).status).toBe(200);
     // the old computer now learns it was removed
-    const v = await request(t.app).post('/api/license/validate').send({ key, device: dev(1) });
+    const v = await request(t.app)
+      .post('/api/license/validate')
+      .send({ key, device: dev(1) });
     expect(v.body).toMatchObject({ valid: false, reason: 'not_activated' });
   });
 
@@ -201,7 +224,8 @@ describe('activation', () => {
       [{ key }, 400, 'bad_device'],
       [{}, 400, 'bad_key'],
       [{ key: 'DRIFT-0000-0000-0000-0000', device: dev(1) }, 404, 'not_found'],
-      [{ key, device: dev(1), platform: 'amiga' }, 400, 'bad_device'],
+      [{ key, device: dev(1), platform: 'amiga' }, 400, 'bad_request'],
+      [{ key, device: dev(1), name: 'x'.repeat(200) }, 400, 'bad_request'],
       [{ key: 'x'.repeat(5000), device: dev(1) }, 400, 'bad_key'],
     ];
     for (const [body, status, error] of cases) {
@@ -212,15 +236,29 @@ describe('activation', () => {
     const nonJson = await request(t.app).post('/api/license/activate').set('Content-Type', 'application/json').send('{oops');
     expect(nonJson.status).toBe(400);
     expect(nonJson.body.error).toBe('bad_request');
-    const huge = await request(t.app).post('/api/license/activate').send({ key, device: dev(1), name: 'x'.repeat(40_000) });
+    const huge = await request(t.app)
+      .post('/api/license/activate')
+      .send({ key, device: dev(1), name: 'x'.repeat(40_000) });
     expect(huge.status).toBe(413);
   });
 
   it('validates and refuses revoked keys', async () => {
     await activate({ key, device: dev(1) });
-    expect((await request(t.app).post('/api/license/validate').send({ key, device: dev(1) })).body).toMatchObject({ valid: true, license: { seats: 1, used: 1 } });
+    expect(
+      (
+        await request(t.app)
+          .post('/api/license/validate')
+          .send({ key, device: dev(1) })
+      ).body,
+    ).toMatchObject({ valid: true, license: { seats: 1, used: 1 } });
     t.licenses.revoke(t.licenses.byKey(key)!.id, 'refunded');
-    expect((await request(t.app).post('/api/license/validate').send({ key, device: dev(1) })).body).toMatchObject({ valid: false, reason: 'revoked' });
+    expect(
+      (
+        await request(t.app)
+          .post('/api/license/validate')
+          .send({ key, device: dev(1) })
+      ).body,
+    ).toMatchObject({ valid: false, reason: 'revoked' });
     expect((await activate({ key, device: dev(3) })).status).toBe(403);
   });
 
@@ -249,7 +287,9 @@ describe('upgrade 1 → 5 computers', () => {
   it('upgrades the same key from the app', async () => {
     const t = setup();
     const { key } = await buy(t.app, 'one');
-    await request(t.app).post('/api/license/activate').send({ key, device: dev(1) });
+    await request(t.app)
+      .post('/api/license/activate')
+      .send({ key, device: dev(1) });
     // not on this device → refused
     expect((await request(t.app).get(`/api/checkout?plan=upgrade&key=${key}&device=${dev(2)}`)).status).toBe(400);
     expect((await request(t.app).get(`/api/checkout?plan=upgrade&key=nope&device=${dev(1)}`)).status).toBe(400);
@@ -283,7 +323,9 @@ describe('stripe webhook', () => {
   const completed = (id: string, extra: object = {}) => ({
     id: 'evt_' + id,
     type: 'checkout.session.completed',
-    data: { object: { id, payment_status: 'paid', customer_details: { email: 'gus@example.com' }, payment_intent: 'pi_' + id, metadata: { plan: 'five' }, ...extra } },
+    data: {
+      object: { id, payment_status: 'paid', customer_details: { email: 'gus@example.com' }, payment_intent: 'pi_' + id, metadata: { plan: 'five' }, ...extra },
+    },
   });
 
   it('issues a key on checkout.session.completed, once', async () => {
@@ -321,7 +363,11 @@ describe('stripe webhook', () => {
 
   it('turns keys off on refund and dispute', async () => {
     await send(completed('cs_test_4'));
-    await send({ id: 'evt_r', type: 'charge.refunded', data: { object: { payment_intent: 'pi_cs_test_4', refunded: true, amount: 1500, amount_refunded: 1500 } } });
+    await send({
+      id: 'evt_r',
+      type: 'charge.refunded',
+      data: { object: { payment_intent: 'pi_cs_test_4', refunded: true, amount: 1500, amount_refunded: 1500 } },
+    });
     expect((t.db.prepare('SELECT status, revoked_reason FROM licenses').get() as { status: string }).status).toBe('revoked');
     await send(completed('cs_test_5'));
     await send({ id: 'evt_d', type: 'charge.dispute.created', data: { object: { payment_intent: 'pi_cs_test_5' } } });
@@ -330,12 +376,20 @@ describe('stripe webhook', () => {
 
   it('a partial refund keeps the key', async () => {
     await send(completed('cs_test_6'));
-    await send({ id: 'evt_pr', type: 'charge.refunded', data: { object: { payment_intent: 'pi_cs_test_6', refunded: false, amount: 1500, amount_refunded: 500 } } });
+    await send({
+      id: 'evt_pr',
+      type: 'charge.refunded',
+      data: { object: { payment_intent: 'pi_cs_test_6', refunded: false, amount: 1500, amount_refunded: 500 } },
+    });
     expect((t.db.prepare('SELECT status FROM licenses').get() as { status: string }).status).toBe('active');
   });
 
   it('asks Stripe to retry when it cannot process', async () => {
-    const r = await send({ id: 'evt_bad', type: 'checkout.session.completed', data: { object: { id: 'cs_test_7', payment_status: 'paid', metadata: { plan: 'one' } } } });
+    const r = await send({
+      id: 'evt_bad',
+      type: 'checkout.session.completed',
+      data: { object: { id: 'cs_test_7', payment_status: 'paid', metadata: { plan: 'one' } } },
+    });
     expect(r.status).toBe(500); // no email: retry later rather than lose the sale
     expect(t.db.prepare('SELECT COUNT(*) AS n FROM webhook_events').get()).toEqual({ n: 0 });
   });
@@ -398,7 +452,13 @@ describe('releases & downloads', () => {
     fs.writeFileSync(
       t.releasesPath,
       JSON.stringify({
-        mac: { latest: '1.2.0', minimum: '1.0.0', url: 'https://dl.example.com/Driftsky-1.2.0.dmg', sha256: sha, download: 'https://dl.example.com/Driftsky.dmg' },
+        mac: {
+          latest: '1.2.0',
+          minimum: '1.0.0',
+          url: 'https://dl.example.com/Driftsky-1.2.0.dmg',
+          sha256: sha,
+          download: 'https://dl.example.com/Driftsky.dmg',
+        },
         windows: { latest: '1.2.1', url: 'https://dl.example.com/Driftsky-Setup-1.2.1.exe', sha256: sha },
       }),
     );
@@ -408,10 +468,15 @@ describe('releases & downloads', () => {
     expect((await request(t.app).get('/download')).headers.location).toBe('https://dl.example.com/Driftsky.dmg');
     expect((await request(t.app).get('/download/windows')).headers.location).toBe('https://dl.example.com/Driftsky-Setup-1.2.1.exe');
   });
-  it('ignores a malformed releases file instead of crashing', async () => {
+  it('ignores a malformed releases file, keeping the last good one', async () => {
     const t = setup();
     fs.writeFileSync(t.releasesPath, '{"mac": {"latest": "one"}}');
     expect((await request(t.app).get('/api/app')).status).toBe(404);
+    fs.writeFileSync(t.releasesPath, JSON.stringify({ mac: { latest: '1.0.0', url: 'https://dl.example.com/a.dmg', sha256: 'c'.repeat(64) } }));
+    expect((await request(t.app).get('/api/app')).body.latest).toBe('1.0.0');
+    await new Promise((r) => setTimeout(r, 20));
+    fs.writeFileSync(t.releasesPath, '{"mac": {"lat');
+    expect((await request(t.app).get('/api/app')).body.latest).toBe('1.0.0');
   });
   it('compares versions numerically', () => {
     expect(compareVersions('1.10.0', '1.9.9')).toBe(1);
@@ -443,9 +508,167 @@ describe('misc', () => {
     expect(r.headers['x-powered-by']).toBeUndefined();
     expect((await request(t.app).get('/api/nope')).status).toBe(404);
     expect((await request(t.app).get('/dev/outbox')).status).toBe(200);
-    const p = setup({ NODE_ENV: 'production', PAYMENTS: 'stripe', STRIPE_SECRET_KEY: 'sk_test', DEVICE_SALT: 'y'.repeat(40) });
+    const p = setup({
+      NODE_ENV: 'production',
+      PAYMENTS: 'stripe',
+      STRIPE_SECRET_KEY: 'sk_test',
+      DEVICE_SALT: 'y'.repeat(40),
+      MAIL: 'resend',
+      RESEND_API_KEY: 're_test',
+    });
     expect((await request(p.app).get('/dev/outbox')).status).toBe(404);
     expect((await request(p.app).get('/dev/checkout/cs_mock_x')).status).toBe(404);
     expect((await request(p.app).get('/api/health')).headers['content-security-policy']).toContain("default-src 'self'");
+  });
+});
+
+describe('review fixes', () => {
+  const sendTo = (t: ReturnType<typeof setup>, body: string) =>
+    request(t.app).post('/api/stripe/webhook').set('Content-Type', 'application/json').set('Stripe-Signature', signStripePayload(body, WHSEC)).send(body);
+
+  it('a signed but malformed event is rejected, never crashes', async () => {
+    const t = setup();
+    for (const body of [
+      'null',
+      '[]',
+      '"x"',
+      '{"type":"foo","data":{"object":{}}}',
+      '{"id":5,"type":"x"}',
+      '{"id":"evt_1","type":"checkout.session.completed","data":null}',
+    ]) {
+      const r = await sendTo(t, body);
+      expect([200, 400, 500]).toContain(r.status);
+    }
+    expect((await request(t.app).get('/api/health')).status).toBe(200);
+  });
+
+  it('prototype names are not plans', async () => {
+    const t = setup();
+    for (const plan of ['toString', 'constructor', '__proto__', 'hasOwnProperty']) {
+      expect((await request(t.app).get(`/api/checkout?plan=${plan}`)).status).toBe(400);
+    }
+    expect(t.db.prepare('SELECT COUNT(*) AS n FROM checkout_sessions').get()).toEqual({ n: 0 });
+    const ev = JSON.stringify({
+      id: 'evt_p',
+      type: 'checkout.session.completed',
+      data: { object: { id: 'cs_test_p', payment_status: 'paid', customer_details: { email: 'p@example.com' }, metadata: { plan: 'toString' } } },
+    });
+    expect((await sendTo(t, ev)).status).toBe(500);
+    expect(t.db.prepare('SELECT COUNT(*) AS n FROM licenses').get()).toEqual({ n: 0 });
+  });
+
+  it('refunding an upgrade only takes the key back to 1 computer; refunding the purchase turns it off', async () => {
+    const t = setup();
+    const { key } = await buy(t.app, 'one');
+    await request(t.app)
+      .post('/api/license/activate')
+      .send({ key, device: dev(1) });
+    const id = (await request(t.app).get(`/api/checkout?plan=upgrade&key=${key}&device=${dev(1)}`)).headers.location.split('/').pop()!;
+    await request(t.app).post(`/dev/checkout/${id}`).type('form').send({ email: 'ann@example.com', action: 'pay' });
+    for (const n of [2, 3])
+      await request(t.app)
+        .post('/api/license/activate')
+        .send({ key, device: dev(n) });
+    const l = t.licenses.byKey(key)! as unknown as { payment_intent: string; upgrade_payment_intent: string };
+    expect(l.upgrade_payment_intent).toMatch(/^pi_mock_/);
+    expect(l.payment_intent).not.toBe(l.upgrade_payment_intent);
+    expect(t.licenses.refundPayment(l.upgrade_payment_intent, 'refunded')).toBe('downgraded');
+    const after = t.licenses.byKey(key)!;
+    expect(after).toMatchObject({ status: 'active', seats: 1 });
+    expect(t.licenses.validate(key, dev(1)).valid).toBe(true);
+    expect(t.licenses.validate(key, dev(2)).valid).toBe(false);
+    expect(t.licenses.refundPayment(l.payment_intent, 'refunded')).toBe('revoked');
+    expect(t.licenses.byKey(key)!.status).toBe('revoked');
+    const s = await request(t.app).get(`/api/checkout/session?id=${id}`);
+    expect(s.body.status).toBe('revoked');
+  });
+
+  it('the thank-you poll has its own, roomier limit', async () => {
+    const t = setup();
+    const { sessionId } = await buy(t.app, 'one');
+    for (let i = 0; i < 40; i++)
+      await request(t.app)
+        .post('/api/license/validate')
+        .send({ key: 'DRIFT-0000-0000-0000-0000', device: dev(1) });
+    expect((await request(t.app).get(`/api/checkout/session?id=${sessionId}`)).status).toBe(200);
+  });
+
+  it('names the wrong field', async () => {
+    const t = setup();
+    const r = await request(t.app).post('/api/license/deactivate').send({ key: 'DRIFT-0000-0000-0000-0000', device: 'nope' });
+    expect(r.body.error).toBe('bad_device');
+  });
+});
+
+describe('code review fixes', () => {
+  const sendTo = (t: ReturnType<typeof setup>, ev: object) => {
+    const body = JSON.stringify(ev);
+    return request(t.app)
+      .post('/api/stripe/webhook')
+      .set('Content-Type', 'application/json')
+      .set('Stripe-Signature', signStripePayload(body, WHSEC))
+      .send(body);
+  };
+  it('refuses unsafe production configs', () => {
+    const base = { NODE_ENV: 'production', PAYMENTS: 'stripe', STRIPE_SECRET_KEY: 'sk', STRIPE_WEBHOOK_SECRET: 'wh', DEVICE_SALT: 'z'.repeat(32) };
+    expect(() => loadConfig(base as NodeJS.ProcessEnv)).toThrow(/MAIL=resend/);
+    expect(() => loadConfig({ ...base, MAIL: 'resend', RESEND_API_KEY: 're', ALLOW_MOCK_PAYMENTS: '1' } as NodeJS.ProcessEnv)).toThrow(/ALLOW_MOCK_PAYMENTS/);
+    expect(loadConfig({ ...base, MAIL: 'resend', RESEND_API_KEY: 're' } as NodeJS.ProcessEnv).MAIL).toBe('resend');
+  });
+  it('issues keys for 100%-off checkouts', async () => {
+    const t = setup();
+    await sendTo(t, {
+      id: 'evt_free',
+      type: 'checkout.session.completed',
+      data: {
+        object: { id: 'cs_test_free', payment_status: 'no_payment_required', customer_details: { email: 'free@example.com' }, metadata: { plan: 'one' } },
+      },
+    });
+    expect(t.db.prepare('SELECT COUNT(*) AS n FROM licenses').get()).toEqual({ n: 1 });
+  });
+  it('reinstates a key when a dispute is won', async () => {
+    const t = setup();
+    await sendTo(t, {
+      id: 'evt_c',
+      type: 'checkout.session.completed',
+      data: {
+        object: { id: 'cs_test_d', payment_status: 'paid', customer_details: { email: 'd@example.com' }, payment_intent: 'pi_d', metadata: { plan: 'one' } },
+      },
+    });
+    await sendTo(t, { id: 'evt_dc', type: 'charge.dispute.created', data: { object: { payment_intent: 'pi_d' } } });
+    expect((t.db.prepare('SELECT status FROM licenses').get() as { status: string }).status).toBe('revoked');
+    await sendTo(t, { id: 'evt_dw', type: 'charge.dispute.closed', data: { object: { payment_intent: 'pi_d', status: 'won' } } });
+    expect((t.db.prepare('SELECT status FROM licenses').get() as { status: string }).status).toBe('active');
+  });
+  it('a failed offer can be retried by Stripe', async () => {
+    const t = setup();
+    const p = (t as unknown as { orders: { payments: { createOffer: () => Promise<string> } } }).orders.payments;
+    const real = p.createOffer.bind(p);
+    p.createOffer = async () => {
+      throw new Error('stripe down');
+    };
+    await expect(t.orders.expired({ sessionId: 'cs_x', email: 'retry@example.com', consent: true, plan: 'one' })).rejects.toThrow();
+    p.createOffer = real;
+    expect(await t.orders.expired({ sessionId: 'cs_x', email: 'retry@example.com', consent: true, plan: 'one' })).toBe(true);
+    expect(await t.orders.expired({ sessionId: 'cs_y', email: 'retry@example.com', consent: true, plan: 'one' })).toBe(false);
+  });
+  it('does not reveal the buyer to someone holding a key on another computer', async () => {
+    const t = setup();
+    const { key } = await buy(t.app, 'one');
+    await request(t.app)
+      .post('/api/license/activate')
+      .send({ key, device: dev(1) });
+    const full = await request(t.app)
+      .post('/api/license/activate')
+      .send({ key, device: dev(2) });
+    expect(full.body.license.email).toBe('');
+    const v = await request(t.app)
+      .post('/api/license/validate')
+      .send({ key, device: dev(3) });
+    expect(v.body.license.email).toBe('');
+  });
+  it('no dev routes with real payments, even with the staging flag', async () => {
+    const t = setup();
+    expect((await request(t.app).get('/dev/outbox')).status).toBe(200);
   });
 });

@@ -391,7 +391,8 @@ button {
 }
 .fake-window.draggable {
   cursor: grab;
-  touch-action: none;
+  /* sideways drags move the window; vertical swipes still scroll the page */
+  touch-action: pan-y;
 }
 .fake-window.draggable:active {
   cursor: grabbing;
@@ -737,8 +738,8 @@ button {
   font-weight: 600;
 }
 .price {
-  font-size: 60px;
-  font-weight: 700;
+  font-size: 56px;
+  font-weight: 600;
   letter-spacing: -0.04em;
   line-height: 1.15;
   margin-top: 8px;
@@ -855,25 +856,41 @@ button {
 }
 .cookie {
   position: fixed;
-  left: 16px;
+  right: 16px;
   bottom: 16px;
   z-index: 90;
-  max-width: 400px;
+  width: min(380px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 16px 16px 12px 18px;
+  border-radius: 16px;
+  padding: 10px 10px 10px 16px;
   box-shadow: 0 16px 40px -12px rgba(10, 10, 30, 0.3);
+  animation: cookie-in 0.45s ease-out both;
+}
+@keyframes cookie-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
 .cookie p {
-  margin: 0 0 10px;
-  font-size: 14px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
   color: #3a3a40;
 }
 .cookie-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 6px;
+  flex: none;
+  gap: 4px;
+}
+.cookie .btn-dark,
+.cookie .btn-quiet {
+  padding: 7px 12px;
+  font-size: 13px;
 }
 
 /* ---------------------------------------------------------------- inner pages */
@@ -963,15 +980,9 @@ button {
 }
 
 /* ---------------------------------------------------------------- responsive */
-@media (max-width: 960px) {
+@media (max-width: 760px) {
   .main-nav {
     display: none;
-  }
-  .grid-2 {
-    grid-template-columns: 1fr;
-  }
-  .wallpapers {
-    grid-template-columns: repeat(3, 1fr);
   }
   .steps {
     grid-template-columns: 1fr;
@@ -980,8 +991,14 @@ button {
     grid-template-columns: 1fr;
     gap: 16px;
   }
+  .wallpapers {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 @media (max-width: 640px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
   .wrap {
     padding: 0 16px;
   }
@@ -1046,9 +1063,9 @@ button {
     align-items: flex-start;
   }
   .cookie {
-    left: 12px;
     right: 12px;
-    max-width: none;
+    bottom: 12px;
+    width: calc(100vw - 24px);
   }
   .drag-hint {
     padding: 8px 14px;

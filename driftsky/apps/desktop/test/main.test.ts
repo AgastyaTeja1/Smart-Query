@@ -51,8 +51,17 @@ describe('Store', () => {
 describe('license key normalisation (matches the server)', () => {
   it('accepts pasted variants', () => {
     const k = 'DRIFT-AB12-CD34-EF56-GH78';
-    for (const v of [k, k.toLowerCase(), ` ${k}\n`, 'AB12CD34EF56GH78', 'DRIFT AB12 CD34 EF56 GH78', 'DRIFT–AB12–CD34–EF56–GH78', 'DRIFT-ABI2-CD34-EF56-GH78']) expect(normalizeKey(v)).toBe(k);
-    for (const v of ['', 'DRIFT', 'DRIFT-AB12-CD34-EF56-GH7', 'DRIFT-AB12-CD34-EF56-GH78-X', 'DRIFT-AB12-CD34-EF56-GH7U']) expect(normalizeKey(v)).toBeNull();
+    for (const v of [k, k.toLowerCase(), ` ${k}\n`, 'AB12CD34EF56GH78', 'DRIFT AB12 CD34 EF56 GH78', 'DRIFT–AB12–CD34–EF56–GH78', 'DRIFT-ABI2-CD34-EF56-GH78'])
+      expect(normalizeKey(v)).toBe(k);
+    for (const v of ['', 'DRIFT', 'DRIFT-AB12-CD34-EF56-GH7', 'DRIFT-AB12-CD34-EF56-GH7U', 'DRIFT-AB12-CD34-EF56-GH78X']) expect(normalizeKey(v)).toBeNull();
+    // pasted with surrounding text or punctuation
+    for (const v of [
+      'License key: DRIFT-AB12-CD34-EF56-GH78',
+      'Your key is DRIFT-AB12-CD34-EF56-GH78.',
+      'DRIFT-AB12-CD34-EF56-GH78,',
+      'DRIFT\u00A0AB12\u00A0CD34\u00A0EF56\u00A0GH78',
+    ])
+      expect(normalizeKey(v)).toBe(k);
   });
   it('hashes the hardware id', () => {
     expect(deviceCode('abc')).toMatch(/^[a-f0-9]{64}$/);
@@ -73,7 +82,10 @@ function fakeServer() {
     const l = seats.get(b.key);
     const json = (status: number, body: object) => new Response(JSON.stringify(body), { status });
     if (!l) return json(404, { error: 'not_found', message: 'nope' });
-    if (l.revoked) return p.endsWith('validate') ? json(200, { valid: false, reason: 'revoked', message: 'turned off' }) : json(403, { error: 'revoked', message: 'turned off' });
+    if (l.revoked)
+      return p.endsWith('validate')
+        ? json(200, { valid: false, reason: 'revoked', message: 'turned off' })
+        : json(403, { error: 'revoked', message: 'turned off' });
     const view = () => ({ email: l.email, seats: l.seats, used: l.devices.size });
     if (p.endsWith('/deactivate')) return json(200, { ok: true, removed: l.devices.delete(b.device) });
     if (p.endsWith('/activate')) {
@@ -82,7 +94,10 @@ function fakeServer() {
       l.devices.add(b.device);
       return json(200, { ok: true, key: b.key, already, license: view() });
     }
-    if (p.endsWith('/validate')) return l.devices.has(b.device) ? json(200, { valid: true, license: view() }) : json(200, { valid: false, reason: 'not_activated', message: 'removed elsewhere' });
+    if (p.endsWith('/validate'))
+      return l.devices.has(b.device)
+        ? json(200, { valid: true, license: view() })
+        : json(200, { valid: false, reason: 'not_activated', message: 'removed elsewhere' });
     return json(404, {});
   });
   return { f: f as unknown as typeof fetch, seats, calls, setOnline: (v: boolean) => (online = v) };
@@ -97,7 +112,7 @@ describe('LicenseManager', () => {
     process.env.DRIFTSKY_DEVICE_ID = 'test-device-1';
     store = new Store(tmp());
     srv = fakeServer();
-    lm = new LicenseManager(store, 'http://api', 'mac', '1.0.0', changed, srv.f);
+    lm = new LicenseManager(store, 'http://api', 'mac', '1.0.0', changed, srv.f, 'test-device-1');
   });
 
   it('activates with a pasted key and persists it', async () => {
@@ -177,6 +192,7 @@ function state(over: Partial<AppState> = {}): AppState {
     running: true,
     paused: null,
     onBattery: false,
+    canGoBehind: true,
     links: { site: '', buy: '', privacy: '', terms: '', lostKey: '', support: '' },
     ...over,
   };
@@ -186,7 +202,27 @@ const ids = (m: MenuSpec[]) => m.map((i) => i.id ?? i.type);
 describe('tray menu', () => {
   it('licensed: effects, wallpapers, amount, behind windows, license line, settings, quit', () => {
     const m = buildMenu(state());
-    expect(ids(m)).toEqual(['status', 'separator', 'effect-snow', 'effect-rain', 'effect-sakura', 'effect-leaves', 'effect-fireflies', 'effect-starfall', 'effect-off', 'separator', 'wallpaper', 'intensity', 'behind', 'separator', 'license', 'separator', 'check-updates', 'settings', 'quit']);
+    expect(ids(m)).toEqual([
+      'status',
+      'separator',
+      'effect-snow',
+      'effect-rain',
+      'effect-sakura',
+      'effect-leaves',
+      'effect-fireflies',
+      'effect-starfall',
+      'effect-off',
+      'separator',
+      'wallpaper',
+      'intensity',
+      'behind',
+      'separator',
+      'license',
+      'separator',
+      'check-updates',
+      'settings',
+      'quit',
+    ]);
     expect(m.find((i) => i.id === 'effect-snow')!.checked).toBe(true);
     expect(m.find((i) => i.id === 'license')!.label).toBe('a@example.com · 2 of 5 computers');
     expect(m.find((i) => i.id === 'wallpaper')!.submenu).toHaveLength(5);
@@ -207,8 +243,16 @@ describe('tray menu', () => {
     expect(m[0].label).toMatch(/add your key/);
   });
   it('shows update availability and progress', () => {
-    expect(buildMenu(state({ update: { status: 'available', version: '1.2.0', notes: null, progress: null, message: null, required: false } })).find((i) => i.id === 'update')!.label).toBe('Update to 1.2.0…');
-    expect(buildMenu(state({ update: { status: 'downloading', version: '1.2.0', notes: null, progress: 0.42, message: null, required: false } })).find((i) => i.id === 'update')!.label).toMatch(/42%/);
+    expect(
+      buildMenu(state({ update: { status: 'available', version: '1.2.0', notes: null, progress: null, message: null, required: false } })).find(
+        (i) => i.id === 'update',
+      )!.label,
+    ).toBe('Update to 1.2.0…');
+    expect(
+      buildMenu(state({ update: { status: 'downloading', version: '1.2.0', notes: null, progress: 0.42, message: null, required: false } })).find(
+        (i) => i.id === 'update',
+      )!.label,
+    ).toMatch(/42%/);
   });
   it('status line reflects pause, battery and preview', () => {
     expect(statusLine(state())).toBe('Snow');
@@ -263,7 +307,14 @@ describe('Updater', () => {
       if (url.includes('/api/app')) return manifest ? new Response(JSON.stringify(manifest)) : new Response('{}', { status: 404 });
       return new Response(file, { headers: { 'content-length': String(file.length) } });
     }) as unknown as typeof fetch;
-    const u = new Updater('http://api', 'mac', '1.0.0', () => undefined, async (p) => (opened.push(p), ''), f);
+    const u = new Updater(
+      'http://api',
+      'mac',
+      '1.0.0',
+      () => undefined,
+      async (p) => (opened.push(p), ''),
+      f,
+    );
     return { u, opened };
   };
   it('finds, downloads, verifies and opens a newer version', async () => {
@@ -346,5 +397,106 @@ describe('native bindings', () => {
     const parsed = await withFakeKoffi(() => winWindowSource(1, (r) => r));
     expect(parsed.join(' ')).toMatch(/EnumWindows/);
     expect(parsed).toContain('DwmGetWindowAttribute');
+  });
+});
+
+describe('review and QA fixes', () => {
+  it('a slow check can’t resurrect a key that was just removed, or poison a new one', async () => {
+    const store = new Store(tmp());
+    const srv = fakeServer();
+    let delay = 0;
+    const slow = (async (u: string, i: RequestInit) => {
+      const d = delay;
+      await new Promise((r) => setTimeout(r, d));
+      return srv.f(u, i);
+    }) as typeof fetch;
+    const lm = new LicenseManager(store, 'http://api', 'mac', '1.0.0', () => undefined, slow, 'race-device');
+    await lm.activate('DRIFT-AAAA-BBBB-CCCC-DDDD');
+    delay = 200;
+    const v = lm.validate();
+    delay = 0;
+    const r = lm.remove();
+    await Promise.all([v, r]);
+    expect(lm.state).toMatchObject({ status: 'none', key: null });
+  });
+
+  it('a captive portal or proxy page doesn’t turn a good key off', async () => {
+    const store = new Store(tmp());
+    const srv = fakeServer();
+    let mode: 'ok' | 'html' | 'proxy' = 'ok';
+    const f = (async (u: string, i: RequestInit) => {
+      if (mode === 'html') return new Response('<html>Log in to Wi-Fi</html>', { status: 200 });
+      if (mode === 'proxy') return new Response('Forbidden', { status: 403 });
+      return srv.f(u, i);
+    }) as typeof fetch;
+    const lm = new LicenseManager(store, 'http://api', 'mac', '1.0.0', () => undefined, f, 'portal-device');
+    await lm.activate('DRIFT-AAAA-BBBB-CCCC-DDDD');
+    for (const m of ['html', 'proxy'] as const) {
+      mode = m;
+      await lm.validate();
+      expect(lm.isLicensed).toBe(true);
+    }
+  });
+
+  it('a check date from the future doesn’t extend the offline grace', async () => {
+    const store = new Store(tmp());
+    const srv = fakeServer();
+    const lm = new LicenseManager(store, 'http://api', 'mac', '1.0.0', () => undefined, srv.f, 'future-device');
+    await lm.activate('DRIFT-AAAA-BBBB-CCCC-DDDD');
+    store.setLicense({ ...store.data.license, checkedAt: '2999-01-01T00:00:00.000Z' });
+    srv.setOnline(false);
+    await lm.validate();
+    expect(lm.state.status).toBe('invalid');
+  });
+
+  it('store survives wrong shapes', () => {
+    const dir = tmp();
+    fs.writeFileSync(path.join(dir, 'driftsky.json'), '{"settings":"x","license":7,"preview":null}');
+    expect(new Store(dir).data.settings).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it('updater: a newer release is downloaded fresh, a stalled download gives up, disk errors don’t crash', async () => {
+    const files: Record<string, Buffer> = { '/1.1.0.dmg': Buffer.from('installer-1.1.0'), '/1.2.0.dmg': Buffer.from('installer-1.2.0') };
+    let manifest: object = {};
+    const sha = (b: Buffer) => crypto.createHash('sha256').update(b).digest('hex');
+    let stall = false;
+    const f = (async (url: string, init?: RequestInit) => {
+      if (url.includes('/api/app')) return new Response(JSON.stringify(manifest));
+      if (stall)
+        return new Response(
+          new ReadableStream({
+            start(c) {
+              c.enqueue(new Uint8Array([1, 2, 3]));
+              init?.signal?.addEventListener('abort', () => c.error(new Error('aborted')));
+            },
+          }),
+        );
+      return new Response(files[new URL(url).pathname]);
+    }) as unknown as typeof fetch;
+    const opened: string[] = [];
+    const u = new Updater(
+      'http://api',
+      'mac',
+      '1.0.0',
+      () => undefined,
+      async (p) => (opened.push(fs.readFileSync(p, 'utf8')), ''),
+      f,
+    );
+    manifest = { latest: '1.1.0', minimum: '1.0.0', url: 'https://dl/1.1.0.dmg', sha256: sha(files['/1.1.0.dmg']) };
+    await u.check(true);
+    await u.install();
+    manifest = { latest: '1.2.0', minimum: '1.0.0', url: 'https://dl/1.2.0.dmg', sha256: sha(files['/1.2.0.dmg']) };
+    expect((await u.check(true)).status).toBe('available');
+    await u.install();
+    expect(opened).toEqual(['installer-1.1.0', 'installer-1.2.0']);
+
+    manifest = { latest: '1.3.0', minimum: '1.0.0', url: 'https://dl/1.3.0.dmg', sha256: 'a'.repeat(64) };
+    await u.check(true);
+    stall = true;
+    u.stallMs = 200;
+    const st = await u.install();
+    expect(st.status).toBe('error');
+    expect(st.message).toMatch(/stopped/);
+    expect((await u.check(true)).status).toBe('available'); // not stuck in "downloading"
   });
 });

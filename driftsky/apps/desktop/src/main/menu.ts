@@ -48,29 +48,64 @@ export function buildMenu(s: AppState): MenuSpec[] {
   const items: MenuSpec[] = [{ id: 'status', label: statusLine(s), enabled: false }, { type: 'separator' }];
 
   for (const id of EFFECTS) {
-    items.push({ id: `effect-${id}`, label: EFFECT_INFO[id].name, type: 'radio', checked: s.settings.effect === id, enabled: licensed || s.preview.active, action: { kind: 'effect', effect: id } });
+    items.push({
+      id: `effect-${id}`,
+      label: EFFECT_INFO[id].name,
+      type: 'radio',
+      checked: s.settings.effect === id,
+      enabled: licensed || s.preview.active,
+      action: { kind: 'effect', effect: id },
+    });
   }
-  items.push({ id: 'effect-off', label: 'Off', type: 'radio', checked: s.settings.effect === 'off', enabled: licensed || s.preview.active, action: { kind: 'effect', effect: 'off' } });
+  items.push({
+    id: 'effect-off',
+    label: 'Off',
+    type: 'radio',
+    checked: s.settings.effect === 'off',
+    enabled: licensed || s.preview.active,
+    action: { kind: 'effect', effect: 'off' },
+  });
   items.push({ type: 'separator' });
 
   items.push({
     id: 'wallpaper',
     label: 'Wallpaper',
     type: 'submenu',
-    submenu: WALLPAPERS.map((w) => ({ id: `wallpaper-${w.id}`, label: w.name, type: 'radio', checked: s.settings.wallpaper === w.id, action: { kind: 'wallpaper', wallpaper: w.id } })),
+    submenu: WALLPAPERS.map((w) => ({
+      id: `wallpaper-${w.id}`,
+      label: w.name,
+      type: 'radio',
+      checked: s.settings.wallpaper === w.id,
+      action: { kind: 'wallpaper', wallpaper: w.id },
+    })),
   });
   items.push({
     id: 'intensity',
     label: 'Amount',
     type: 'submenu',
-    submenu: INTENSITIES.map((i) => ({ id: `intensity-${i.label.toLowerCase()}`, label: i.label, type: 'radio', checked: Math.abs(s.settings.intensity - i.value) < 0.01, action: { kind: 'intensity', value: i.value } })),
+    submenu: INTENSITIES.map((i) => ({
+      id: `intensity-${i.label.toLowerCase()}`,
+      label: i.label,
+      type: 'radio',
+      checked: Math.abs(s.settings.intensity - i.value) < 0.01,
+      action: { kind: 'intensity', value: i.value },
+    })),
   });
-  items.push({ id: 'behind', label: 'Behind windows', type: 'checkbox', checked: s.settings.behindWindows, action: { kind: 'toggle', setting: 'behindWindows' } });
+  if (s.canGoBehind)
+    items.push({
+      id: 'behind',
+      label: 'Behind windows',
+      type: 'checkbox',
+      checked: s.settings.behindWindows,
+      action: { kind: 'toggle', setting: 'behindWindows' },
+    });
   items.push({ type: 'separator' });
 
   if (licensed) {
     const seats = s.license.seats ?? 1;
-    items.push({ id: 'license', label: `${s.license.email ?? 'Licensed'} · ${seats === 1 ? '1 computer' : `${s.license.used ?? 1} of ${seats} computers`}`, enabled: false });
+    const email = s.license.email ?? 'Licensed';
+    const short = email.length > 32 ? `${email.slice(0, 31)}…` : email;
+    items.push({ id: 'license', label: `${short} · ${seats === 1 ? '1 computer' : `${s.license.used ?? 1} of ${seats} computers`}`, enabled: false });
     if (seats === 1) items.push({ id: 'upgrade', label: 'Upgrade to 5 computers…', action: { kind: 'upgrade' } });
   } else {
     items.push({ id: 'enter-key', label: 'Enter license key…', action: { kind: 'open', tab: 'license' } });
@@ -79,8 +114,14 @@ export function buildMenu(s: AppState): MenuSpec[] {
   }
   items.push({ type: 'separator' });
 
-  if (s.update.status === 'available' || s.update.status === 'ready') items.push({ id: 'update', label: `Update to ${s.update.version}…`, action: { kind: 'update' } });
-  else if (s.update.status === 'downloading') items.push({ id: 'update', label: `Downloading update… ${Math.round((s.update.progress ?? 0) * 100)}%`, enabled: false });
+  if (s.update.status === 'available' || s.update.status === 'ready')
+    items.push({
+      id: 'update',
+      label: s.update.required ? `Update required: ${s.update.version}…` : `Update to ${s.update.version}…`,
+      action: { kind: 'update' },
+    });
+  else if (s.update.status === 'downloading')
+    items.push({ id: 'update', label: `Downloading update… ${Math.round((s.update.progress ?? 0) * 100)}%`, enabled: false });
   else items.push({ id: 'check-updates', label: 'Check for updates', action: { kind: 'check-updates' } });
   items.push({ id: 'settings', label: 'Settings…', accelerator: `${cmd}+,`, action: { kind: 'open', tab: 'effects' } });
   items.push({ id: 'quit', label: 'Quit Driftsky', accelerator: `${cmd}+Q`, action: { kind: 'quit' } });

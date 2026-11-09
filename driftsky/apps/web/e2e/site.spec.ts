@@ -32,8 +32,10 @@ async function sceneStats(page: Page, id: string) {
   }, id);
 }
 
-test.beforeEach(async ({ request }) => {
+test.beforeEach(async ({ request, page }, info) => {
   await request.post('/dev/reset-limits');
+  // the cookie banner slides in after a few seconds; most tests act as a returning visitor
+  if (!/cookie/i.test(info.title)) await page.addInitScript(() => localStorage.setItem('ds-consent', 'no'));
 });
 
 test('home page renders every section with no errors and no sideways scroll', async ({ page }) => {
@@ -57,7 +59,12 @@ test('header navigation scrolls to each section', async ({ page }) => {
   test.skip(isMobile(page), 'the section links are hidden on phones, as on the original');
   await page.goto('/');
   await dismissCookies(page);
-  for (const [label, id] of [['Effects', 'effects'], ['Wallpapers', 'wallpapers'], ['Pricing', 'pricing'], ['FAQ', 'faq']]) {
+  for (const [label, id] of [
+    ['Effects', 'effects'],
+    ['Wallpapers', 'wallpapers'],
+    ['Pricing', 'pricing'],
+    ['FAQ', 'faq'],
+  ]) {
     await page.locator('.main-nav').getByRole('link', { name: label }).click();
     await expect(page).toHaveURL(new RegExp(`#${id}$`));
     await expect(page.locator(`#${id}`)).toBeInViewport({ ratio: 0.1 });
@@ -138,9 +145,8 @@ test('fireflies come to a resting pointer; leaves fly from a sweeping one', asyn
   await expect.poll(async () => (await sceneStats(page, 'effect-leaves'))!.shed, { timeout: 5000 }).toBeGreaterThan(0);
 });
 
-test('FAQ opens one answer at a time, with accessible state', async ({ page }) => {
+test('FAQ answers open and close independently, with accessible state', async ({ page }) => {
   await page.goto('/#faq');
-  await dismissCookies(page);
   const q1 = page.getByRole('button', { name: 'What’s included?' });
   const q2 = page.getByRole('button', { name: 'How do I unlock it?' });
   await expect(q1).toHaveAttribute('aria-expanded', 'false');
@@ -148,11 +154,12 @@ test('FAQ opens one answer at a time, with accessible state', async ({ page }) =
   await expect(q1).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByText(/All of it: the six effects/)).toBeVisible();
   await q2.click();
-  await expect(q1).toHaveAttribute('aria-expanded', 'false');
+  // like <details>: both stay open
+  await expect(q1).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByText(/we email you a license key/)).toBeVisible();
+  await q1.click();
   await expect(page.getByText(/All of it: the six effects/)).toBeHidden();
   await expect(page.getByText(/we email you a license key/)).toBeVisible();
-  await q2.click();
-  await expect(q2).toHaveAttribute('aria-expanded', 'false');
   // keyboard
   await q1.focus();
   await page.keyboard.press('Enter');
@@ -169,6 +176,10 @@ test('wallpaper preview opens full size and closes with Escape', async ({ page }
   const img = dialog.getByRole('img');
   await expect(img).toHaveAttribute('src', '/wallpapers/autumn.jpg');
   await expect.poll(() => img.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(2880);
+  // focus can't wander behind the dialog
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await expect(thumb).toBeFocused();
@@ -188,6 +199,7 @@ test('cookie choice is remembered and can be changed', async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem('ds-consent'))).toBe('no');
   await page.getByRole('button', { name: 'Cookie settings' }).click();
   await expect(banner).toBeVisible();
+  await expect(banner.getByRole('button', { name: 'OK' })).toBeFocused();
   await banner.getByRole('button', { name: 'OK' }).click();
   expect(await page.evaluate(() => localStorage.getItem('ds-consent'))).toBe('yes');
 });

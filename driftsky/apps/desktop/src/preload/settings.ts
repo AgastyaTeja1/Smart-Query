@@ -19,6 +19,8 @@ const api = {
   activate: (key: string): Promise<ActionResult> => ipcRenderer.invoke('activate', key),
   removeKey: (force = false): Promise<ActionResult> => ipcRenderer.invoke('remove-key', force),
   preview: (): Promise<ActionResult> => ipcRenderer.invoke('preview'),
+  copyKey: (): Promise<ActionResult> => ipcRenderer.invoke('copy-key'),
+  recheck: (): Promise<ActionResult> => ipcRenderer.invoke('recheck'),
   buy: (): Promise<void> => ipcRenderer.invoke('buy'),
   upgrade: (): Promise<void> => ipcRenderer.invoke('upgrade'),
   openLink: (url: string): Promise<void> => ipcRenderer.invoke('open-link', url),

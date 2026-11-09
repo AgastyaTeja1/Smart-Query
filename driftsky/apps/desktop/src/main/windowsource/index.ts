@@ -33,8 +33,13 @@ export function fileWindowSource(file: string): WindowSource {
   };
 }
 
-export function createWindowSource(opts: { platform: NodeJS.Platform; pid: number; toDip?: (r: { x: number; y: number; width: number; height: number }) => { x: number; y: number; width: number; height: number } }): WindowSource {
-  const fake = process.env.DRIFTSKY_FAKE_WINDOWS;
+export function createWindowSource(opts: {
+  platform: NodeJS.Platform;
+  pid: number;
+  fakeFile?: string;
+  toDip?: (r: { x: number; y: number; width: number; height: number }) => { x: number; y: number; width: number; height: number };
+}): WindowSource {
+  const fake = opts.fakeFile;
   if (fake) return fileWindowSource(fake);
   try {
     if (opts.platform === 'darwin') {

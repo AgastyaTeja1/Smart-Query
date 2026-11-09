@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from '../router';
 import { PRICE_ONE, SUPPORT_EMAIL } from '../content';
 import { getConsent, setConsent, CONSENT_EVENT } from '../analytics';
@@ -77,12 +77,25 @@ export function Footer() {
 }
 
 export function CookieBanner() {
-  const [open, setOpen] = useState(() => getConsent() === null);
+  const [open, setOpen] = useState(false);
+  const okRef = useRef<HTMLButtonElement>(null);
+  const [focusOnOpen, setFocusOnOpen] = useState(false);
   useEffect(() => {
-    const show = () => setOpen(true);
+    // first visit: slide in after a moment, not on top of the first impression
+    const t = getConsent() === null ? setTimeout(() => setOpen(true), 3000) : undefined;
+    const show = () => {
+      setFocusOnOpen(true);
+      setOpen(true);
+    };
     window.addEventListener('ds:cookie-settings', show);
-    return () => window.removeEventListener('ds:cookie-settings', show);
+    return () => {
+      if (t) clearTimeout(t);
+      window.removeEventListener('ds:cookie-settings', show);
+    };
   }, []);
+  useEffect(() => {
+    if (open && focusOnOpen) okRef.current?.focus();
+  }, [open, focusOnOpen]);
   if (!open) return null;
   const choose = (v: boolean) => {
     setConsent(v);
@@ -96,7 +109,7 @@ export function CookieBanner() {
         <button type="button" className="btn-quiet" onClick={() => choose(false)}>
           No thanks
         </button>
-        <button type="button" className="btn-dark" onClick={() => choose(true)}>
+        <button ref={okRef} type="button" className="btn-dark" onClick={() => choose(true)}>
           OK
         </button>
       </div>

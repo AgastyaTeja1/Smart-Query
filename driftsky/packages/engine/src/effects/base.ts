@@ -89,11 +89,11 @@ export function dotSprite(sprites: Sprites, key: string, r: number, inner: strin
 }
 
 /** How fast something must move (px/s) before what sits on it slides off. */
-export const SHED_SPEED = 45;
+export const SHED_SPEED = 60;
 
 /** Fraction of resting material to shed this frame for a surface moving at `speed`. */
 export function shedFraction(speed: number, dt: number) {
   if (speed <= SHED_SPEED) return 0;
-  const rate = (speed - SHED_SPEED) / 55; // per second
+  const rate = (speed - SHED_SPEED) / 50; // per second
   return 1 - Math.exp(-rate * dt);
 }

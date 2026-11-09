@@ -18,10 +18,13 @@ export function generateKey(): string {
  * prefix or not, and look-alike letters (O→0, I/L→1). Returns null if it can't be a key.
  */
 export function normalizeKey(input: unknown): string | null {
-  if (typeof input !== 'string') return null;
-  let s = input.toUpperCase().replace(/[\s​-‍﻿"'`]/g, '');
-  s = s.replace(/[–—‐]/g, '-');
-  s = s.replace(/-/g, '');
+  if (typeof input !== 'string' || input.length > 400) return null;
+  // people paste "License key: DRIFT-….", or a whole sentence from the email: find the key in it
+  let raw = input.toUpperCase();
+  const found = raw.match(/DRIFT[\s ‐-—-]*(?:[0-9A-Z][\s ‐-—-]*){15}[0-9A-Z](?![0-9A-Z])/);
+  if (found) raw = found[0];
+  let s = raw.replace(/[\s ​-‍﻿"'`.,;:]/g, '');
+  s = s.replace(/[‐-—-]/g, '');
   if (s.startsWith(KEY_PREFIX)) s = s.slice(KEY_PREFIX.length);
   s = s.replace(/O/g, '0').replace(/[IL]/g, '1');
   if (s.length !== 16) return null;
@@ -117,18 +120,47 @@ export class LicenseService {
   /** Raise a 1-computer key to 5 computers. Idempotent. */
   upgrade(licenseId: number, paymentIntent?: string): License | undefined {
     this.db
-      .prepare("UPDATE licenses SET seats = MAX(seats, 5), plan = 'five', payment_intent = COALESCE(?, payment_intent), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?")
+      .prepare(
+        "UPDATE licenses SET seats = MAX(seats, 5), plan = 'five', upgrade_payment_intent = COALESCE(?, upgrade_payment_intent), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?",
+      )
       .run(paymentIntent ?? null, licenseId);
     return this.byId(licenseId);
   }
 
   revoke(licenseId: number, reason: string) {
-    this.db.prepare("UPDATE licenses SET status = 'revoked', revoked_reason = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?").run(reason, licenseId);
+    this.db
+      .prepare("UPDATE licenses SET status = 'revoked', revoked_reason = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?")
+      .run(reason, licenseId);
   }
 
   revokeByPaymentIntent(pi: string, reason: string): number {
     const r = this.db.prepare("UPDATE licenses SET status = 'revoked', revoked_reason = ? WHERE payment_intent = ? AND status = 'active'").run(reason, pi);
     return Number(r.changes);
+  }
+
+  reinstateDisputed(pi: string) {
+    this.db
+      .prepare("UPDATE licenses SET status = 'active', revoked_reason = NULL WHERE payment_intent = ? AND status = 'revoked' AND revoked_reason = 'disputed'")
+      .run(pi);
+  }
+
+  /**
+   * A payment was refunded or disputed. The original purchase turns the key off; an upgrade payment
+   * only takes the key back to 1 computer (keeping the computer that was added first).
+   */
+  refundPayment(pi: string, reason: string): 'revoked' | 'downgraded' | 'none' {
+    if (this.revokeByPaymentIntent(pi, reason)) return 'revoked';
+    return tx(this.db, () => {
+      const l = this.db.prepare("SELECT * FROM licenses WHERE upgrade_payment_intent = ? AND status = 'active'").get(pi) as License | undefined;
+      if (!l) return 'none' as const;
+      this.db
+        .prepare("UPDATE licenses SET seats = 1, plan = 'one', upgrade_payment_intent = NULL, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?")
+        .run(l.id);
+      this.db
+        .prepare('DELETE FROM activations WHERE license_id = ? AND id NOT IN (SELECT id FROM activations WHERE license_id = ? ORDER BY id LIMIT 1)')
+        .run(l.id, l.id);
+      return 'downgraded' as const;
+    });
   }
 
   /** Add this computer to the key. Re-activating the same computer never uses another seat. */
@@ -148,12 +180,15 @@ export class LicenseService {
       const existing = this.db.prepare('SELECT id FROM activations WHERE license_id = ? AND device = ?').get(l.id, dev);
       if (existing) {
         this.db
-          .prepare("UPDATE activations SET last_seen = strftime('%Y-%m-%dT%H:%M:%fZ','now'), name = COALESCE(?, name), platform = COALESCE(?, platform), app_version = COALESCE(?, app_version) WHERE id = ?")
+          .prepare(
+            "UPDATE activations SET last_seen = strftime('%Y-%m-%dT%H:%M:%fZ','now'), name = COALESCE(?, name), platform = COALESCE(?, platform), app_version = COALESCE(?, app_version) WHERE id = ?",
+          )
           .run(meta.name ?? null, meta.platform ?? null, meta.appVersion ?? null, (existing as { id: number }).id);
         return { ok: true as const, license: this.view(l), already: true };
       }
       const used = this.activations(l.id).length;
-      if (used >= l.seats) return { ok: false as const, error: 'seats_full' as const, license: this.view(l) };
+      // not on this computer yet: don't reveal who bought the key
+      if (used >= l.seats) return { ok: false as const, error: 'seats_full' as const, license: { ...this.view(l), email: '' } };
       this.db
         .prepare('INSERT INTO activations (license_id, device, name, platform, app_version) VALUES (?, ?, ?, ?, ?)')
         .run(l.id, dev, meta.name ?? null, meta.platform ?? null, meta.appVersion ?? null);
@@ -183,7 +218,7 @@ export class LicenseService {
     const r = this.db
       .prepare("UPDATE activations SET last_seen = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE license_id = ? AND device = ?")
       .run(l.id, this.scramble(device));
-    if (Number(r.changes) === 0) return { valid: false, reason: 'not_activated', license: this.view(l) };
+    if (Number(r.changes) === 0) return { valid: false, reason: 'not_activated', license: { ...this.view(l), email: '' } };
     return { valid: true, license: this.view(l) };
   }
 }

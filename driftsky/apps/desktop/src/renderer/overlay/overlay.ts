@@ -64,5 +64,12 @@ window.driftskyOverlay.onWorld((w) => {
 
 // for automated tests and debugging from devtools
 window.__overlay = {
-  stats: () => ({ ...engine.stats(), running: loop.isRunning, worldFrames: frames, msSinceWorld: lastWorld ? Math.round(performance.now() - lastWorld) : null, config, size: [innerWidth, innerHeight] }),
+  stats: () => ({
+    ...engine.stats(),
+    running: loop.isRunning,
+    worldFrames: frames,
+    msSinceWorld: lastWorld ? Math.round(performance.now() - lastWorld) : null,
+    config,
+    size: [innerWidth, innerHeight],
+  }),
 };

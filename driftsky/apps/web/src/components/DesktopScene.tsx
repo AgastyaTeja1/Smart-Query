@@ -155,8 +155,9 @@ export function DesktopScene(props: Props) {
       });
     };
     const io = new IntersectionObserver(
-      ([e]) => {
-        visible = e.isIntersecting;
+      (entries) => {
+        // entries can be batched after a fast scroll: only the newest one is current
+        visible = entries[entries.length - 1].isIntersecting;
         if (visible) start();
         else loop.stop();
       },
@@ -236,7 +237,14 @@ export function DesktopScene(props: Props) {
       onPointerLeave={() => (pointerRef.current = null)}
       data-testid={props.testId}
     >
-      <img className="scene-hd" src={`/wallpapers/${wallpaper}.jpg`} alt="" loading="lazy" decoding="async" onLoad={(e) => e.currentTarget.classList.add('in')} />
+      <img
+        className="scene-hd"
+        src={`/wallpapers/${wallpaper}.jpg`}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onLoad={(e) => e.currentTarget.classList.add('in')}
+      />
       {menubar && <MenuBar />}
       {ordered.map((w, i) => (
         <div

@@ -95,7 +95,10 @@ export function keysReminderEmail(opts: { keys: Array<{ key: string; seats: numb
   const html = layout(
     'Your Driftsky key',
     opts.keys
-      .map((k) => `<div style="font-family:ui-monospace,Menlo,monospace;font-size:17px;background:#f5f5f7;border-radius:10px;padding:14px;text-align:center;margin-bottom:8px">${esc(k.key)}</div><p style="color:#6e6e73;font-size:13px;margin:0 0 14px;text-align:center">${k.seats === 1 ? '1 computer' : `${k.seats} computers`}</p>`)
+      .map(
+        (k) =>
+          `<div style="font-family:ui-monospace,Menlo,monospace;font-size:17px;background:#f5f5f7;border-radius:10px;padding:14px;text-align:center;margin-bottom:8px">${esc(k.key)}</div><p style="color:#6e6e73;font-size:13px;margin:0 0 14px;text-align:center">${k.seats === 1 ? '1 computer' : `${k.seats} computers`}</p>`,
+      )
       .join(''),
   );
   return { subject: 'Your Driftsky license key', text, html };

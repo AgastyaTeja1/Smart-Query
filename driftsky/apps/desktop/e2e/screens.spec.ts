@@ -12,11 +12,26 @@ test('capture', async ({ request }) => {
   const API = `http://localhost:${WEB_PORT}`;
   const dir = fs.mkdtempSync(path.join(TMP, 'shots-'));
   const wins = path.join(dir, 'w.json');
-  fs.writeFileSync(wins, JSON.stringify([{ id: 'a', x: 360, y: 260, w: 720, h: 400 }, { id: 'b', x: 900, y: 420, w: 420, h: 300 }]));
+  fs.writeFileSync(
+    wins,
+    JSON.stringify([
+      { id: 'a', x: 360, y: 260, w: 720, h: 400 },
+      { id: 'b', x: 900, y: 420, w: 420, h: 300 },
+    ]),
+  );
   const app = await electron.launch({
     executablePath: path.resolve(__dirname, '../../../node_modules/.bin/electron'),
     args: ['--no-sandbox', path.resolve(__dirname, '..')],
-    env: { ...process.env, DRIFTSKY_TEST: '1', DRIFTSKY_USER_DATA: path.join(dir, 'data'), DRIFTSKY_API: API, DRIFTSKY_SITE: API, DRIFTSKY_FAKE_WINDOWS: wins, DRIFTSKY_WALLPAPER_LOG: path.join(dir, 'wp.log'), DRIFTSKY_DEVICE_ID: 'shots' },
+    env: {
+      ...process.env,
+      DRIFTSKY_TEST: '1',
+      DRIFTSKY_USER_DATA: path.join(dir, 'data'),
+      DRIFTSKY_API: API,
+      DRIFTSKY_SITE: API,
+      DRIFTSKY_FAKE_WINDOWS: wins,
+      DRIFTSKY_WALLPAPER_LOG: path.join(dir, 'wp.log'),
+      DRIFTSKY_DEVICE_ID: 'shots',
+    },
   });
   const page = await app.firstWindow();
   await page.waitForTimeout(800);

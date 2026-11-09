@@ -15,50 +15,58 @@ export function winWindowSource(ownPid: number, toDip: (r: Rect) => Rect): Windo
   const dwm = koffi.load('dwmapi.dll');
 
   const RECT = koffi.struct('DS_RECT', { left: 'int32_t', top: 'int32_t', right: 'int32_t', bottom: 'int32_t' });
-  const EnumWindowsProc = koffi.proto('bool __stdcall DS_EnumWindowsProc(void *hwnd, intptr_t lParam)');
-  const EnumWindows = user32.func('bool __stdcall EnumWindows(DS_EnumWindowsProc *cb, intptr_t lParam)');
-  const IsWindowVisible = user32.func('bool __stdcall IsWindowVisible(void *hwnd)');
-  const IsIconic = user32.func('bool __stdcall IsIconic(void *hwnd)');
+  const EnumWindowsProc = koffi.proto('int __stdcall DS_EnumWindowsProc(void *hwnd, intptr_t lParam)');
+  const EnumWindows = user32.func('int __stdcall EnumWindows(DS_EnumWindowsProc *cb, intptr_t lParam)');
+  const IsWindowVisible = user32.func('int __stdcall IsWindowVisible(void *hwnd)');
+  const IsIconic = user32.func('int __stdcall IsIconic(void *hwnd)');
   const GetWindowLongPtrW = user32.func('intptr_t __stdcall GetWindowLongPtrW(void *hwnd, int index)');
   const GetWindowThreadProcessId = user32.func('uint32_t __stdcall GetWindowThreadProcessId(void *hwnd, _Out_ uint32_t *pid)');
   const GetClassNameW = user32.func('int __stdcall GetClassNameW(void *hwnd, void *buf, int max)');
-  const GetWindowRect = user32.func('bool __stdcall GetWindowRect(void *hwnd, _Out_ DS_RECT *rect)');
+  const GetWindowRect = user32.func('int __stdcall GetWindowRect(void *hwnd, _Out_ DS_RECT *rect)');
   const DwmGetRect = dwm.func('DwmGetWindowAttribute', 'int32_t', ['void *', 'uint32_t', koffi.out(koffi.pointer(RECT)), 'uint32_t']);
   const DwmGetInt = dwm.func('DwmGetWindowAttribute', 'int32_t', ['void *', 'uint32_t', koffi.out(koffi.pointer('int32_t')), 'uint32_t']);
 
   const GWL_EXSTYLE = -20;
   const WS_EX_TOOLWINDOW = 0x80;
-  const WS_EX_NOACTIVATE = 0x08000000;
   const WS_EX_TRANSPARENT = 0x20;
   const DWMWA_EXTENDED_FRAME_BOUNDS = 9;
   const DWMWA_CLOAKED = 14;
-  const SKIP_CLASSES = new Set(['Progman', 'WorkerW', 'Shell_TrayWnd', 'Shell_SecondaryTrayWnd', 'Windows.UI.Core.CoreWindow', 'NotifyIconOverflowWindow', 'TopLevelWindowForOverflowXamlIsland']);
+  const SKIP_CLASSES = new Set([
+    'Progman',
+    'WorkerW',
+    'Shell_TrayWnd',
+    'Shell_SecondaryTrayWnd',
+    'Windows.UI.Core.CoreWindow',
+    'NotifyIconOverflowWindow',
+    'TopLevelWindowForOverflowXamlIsland',
+  ]);
   const classBuf = Buffer.alloc(512);
 
   let collected: ScreenWindow[] = [];
   const cb = koffi.register((hwnd: unknown) => {
     try {
-      if (!IsWindowVisible(hwnd) || IsIconic(hwnd)) return true;
+      if (!IsWindowVisible(hwnd) || IsIconic(hwnd)) return 1;
       const ex = Number(GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
-      if (ex & (WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT)) return true;
+      // tool windows and click-through overlays aren't app windows
+      if (ex & (WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT)) return 1;
       const cloaked = [0];
-      if (DwmGetInt(hwnd, DWMWA_CLOAKED, cloaked, 4) === 0 && cloaked[0] !== 0) return true;
+      if (DwmGetInt(hwnd, DWMWA_CLOAKED, cloaked, 4) === 0 && cloaked[0] !== 0) return 1;
       const pid = [0];
       GetWindowThreadProcessId(hwnd, pid);
-      if (pid[0] === ownPid) return true;
+      if (pid[0] === ownPid) return 1;
       const len = GetClassNameW(hwnd, classBuf, 256);
-      if (len > 0 && SKIP_CLASSES.has(classBuf.toString('utf16le', 0, len * 2))) return true;
+      if (len > 0 && SKIP_CLASSES.has(classBuf.toString('utf16le', 0, len * 2))) return 1;
       const r = {} as { left: number; top: number; right: number; bottom: number };
-      if (DwmGetRect(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, r, 16) !== 0 && !GetWindowRect(hwnd, r)) return true;
+      if (DwmGetRect(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, r, 16) !== 0 && !GetWindowRect(hwnd, r)) return 1;
       const w = r.right - r.left;
       const h = r.bottom - r.top;
-      if (w < 40 || h < 40) return true;
+      if (w < 40 || h < 40) return 1;
       const d = toDip({ x: r.left, y: r.top, width: w, height: h });
       collected.push({ id: String(koffi.address(hwnd)), x: d.x, y: d.y, w: d.width, h: d.height });
     } catch {
       /* skip this window */
     }
-    return true;
+    return 1;
   }, koffi.pointer(EnumWindowsProc));
 
   return {

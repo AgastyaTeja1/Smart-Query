@@ -70,6 +70,9 @@ export function openDb(file: string): DB {
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   for (const m of MIGRATIONS) db.exec(m);
+  // added after launch: the upgrade (1 → 5 computers) is a separate payment
+  const cols = (db.prepare('PRAGMA table_info(licenses)').all() as Array<{ name: string }>).map((c) => c.name);
+  if (!cols.includes('upgrade_payment_intent')) db.exec('ALTER TABLE licenses ADD COLUMN upgrade_payment_intent TEXT');
   return db;
 }
 

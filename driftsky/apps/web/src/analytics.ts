@@ -21,6 +21,7 @@ export function setConsent(v: boolean) {
     /* private mode: the banner simply shows again next time */
   }
   if (v) load();
+  else (window as unknown as { posthog?: { opt_out_capturing?: () => void } }).posthog?.opt_out_capturing?.();
 }
 
 let loaded = false;
@@ -31,7 +32,11 @@ function load() {
   const s = document.createElement('script');
   s.src = 'https://us-assets.i.posthog.com/static/array.js';
   s.async = true;
-  s.onload = () => (window as unknown as { posthog?: { init: (k: string, o: object) => void } }).posthog?.init(key, { api_host: 'https://us.i.posthog.com', persistence: 'cookie' });
+  s.onload = () =>
+    (window as unknown as { posthog?: { init: (k: string, o: object) => void } }).posthog?.init(key, {
+      api_host: 'https://us.i.posthog.com',
+      persistence: 'cookie',
+    });
   document.head.appendChild(s);
 }
 

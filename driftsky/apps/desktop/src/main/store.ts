@@ -71,9 +71,10 @@ export class Store {
         }
       }
     }
+    const obj = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
     return {
-      settings: settingsSchema.parse(raw.settings ?? {}) as Settings,
-      license: licenseSchema.parse(raw.license ?? {}) as LicenseState,
+      settings: settingsSchema.parse(obj(raw.settings)) as Settings,
+      license: licenseSchema.parse(obj(raw.license)) as LicenseState,
       preview: { used: !!(raw.preview as { used?: boolean } | undefined)?.used },
       fallbackId: typeof raw.fallbackId === 'string' ? raw.fallbackId : undefined,
     };

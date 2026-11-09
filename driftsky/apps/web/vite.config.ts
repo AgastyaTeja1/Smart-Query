@@ -16,7 +16,7 @@ function sharedAssets(): Plugin {
         const prefix = Object.keys(map).find((p) => url.startsWith(p));
         if (!prefix) return next();
         const file = path.join(assets, map[prefix], decodeURIComponent(url.slice(prefix.length)));
-        if (!file.startsWith(assets) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return next();
+        if (!file.startsWith(assets + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return next();
         res.setHeader('Content-Type', file.endsWith('.jpg') ? 'image/jpeg' : file.endsWith('.svg') ? 'image/svg+xml' : 'image/png');
         fs.createReadStream(file).pipe(res);
       });

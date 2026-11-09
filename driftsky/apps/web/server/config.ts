@@ -56,6 +56,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error('PAYMENTS=stripe needs STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET');
   }
   if (c.MAIL === 'resend' && !c.RESEND_API_KEY) throw new Error('MAIL=resend needs RESEND_API_KEY');
+  if (c.PAYMENTS === 'stripe' && c.ALLOW_MOCK_PAYMENTS) throw new Error('ALLOW_MOCK_PAYMENTS only applies to PAYMENTS=mock; remove it with real payments');
+  if (c.NODE_ENV === 'production' && c.PAYMENTS === 'stripe' && c.MAIL !== 'resend')
+    throw new Error('With real payments, set MAIL=resend so customers receive their keys');
   return c;
 }
 

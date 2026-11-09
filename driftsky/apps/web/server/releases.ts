@@ -3,7 +3,10 @@ import { z } from 'zod';
 
 const release = z.object({
   latest: z.string().regex(/^\d+\.\d+\.\d+$/),
-  minimum: z.string().regex(/^\d+\.\d+\.\d+$/).default('1.0.0'),
+  minimum: z
+    .string()
+    .regex(/^\d+\.\d+\.\d+$/)
+    .default('1.0.0'),
   /** The app update itself (dmg / exe). */
   url: z.string().url(),
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
@@ -18,6 +21,7 @@ export type Releases = z.infer<typeof file>;
 /** Reads releases.json on demand (cached by mtime) so a new release needs no restart. */
 export class ReleaseStore {
   private cache: { mtime: number; data: Releases } | null = null;
+  private badMtime = -2;
   constructor(private path: string) {}
 
   get(): Releases {
@@ -28,8 +32,17 @@ export class ReleaseStore {
       this.cache = { mtime: st.mtimeMs, data };
       return data;
     } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') console.error('[releases] could not read', this.path, (e as Error).message);
-      return {};
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
+        this.cache = null;
+        return {};
+      }
+      // a half-written or broken file: keep serving the last good one, and say so once per change
+      const mtime = fs.statSync(this.path, { throwIfNoEntry: false })?.mtimeMs ?? -1;
+      if (this.badMtime !== mtime) {
+        this.badMtime = mtime;
+        console.error('[releases] ignoring invalid', this.path, (e as Error).message);
+      }
+      return this.cache?.data ?? {};
     }
   }
 

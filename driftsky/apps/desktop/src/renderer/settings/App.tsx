@@ -12,16 +12,36 @@ const api = () => window.driftsky;
 
 type Tab = 'effects' | 'wallpapers' | 'license' | 'settings' | 'about';
 const TABS: Array<{ id: Tab; label: string; icon: ReactNode }> = [
-  { id: 'effects', label: 'Effects', icon: <Icon d="M7 15a4 4 0 0 1 .5-8 5.5 5.5 0 0 1 10.6 1.5A3.5 3.5 0 0 1 17.5 15zM9 19l-.5 1.5M13 18l-.5 1.5M16.5 19l-.5 1.5" /> },
+  {
+    id: 'effects',
+    label: 'Effects',
+    icon: <Icon d="M7 15a4 4 0 0 1 .5-8 5.5 5.5 0 0 1 10.6 1.5A3.5 3.5 0 0 1 17.5 15zM9 19l-.5 1.5M13 18l-.5 1.5M16.5 19l-.5 1.5" />,
+  },
   { id: 'wallpapers', label: 'Wallpapers', icon: <Icon d="M4 6h16v12H4zM4 15l4.5-4.5 4 4L15 12l5 5" /> },
   { id: 'license', label: 'License', icon: <Icon d="M14 10a4 4 0 1 0-3.9 4L9 15H7v2H5v2H3v-3l6.6-6.6A4 4 0 0 0 14 10zM15.5 8.5h.01" /> },
-  { id: 'settings', label: 'Settings', icon: <Icon d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 13a7.5 7.5 0 0 0 0-2l2-1.5-2-3.4-2.3 1a7.5 7.5 0 0 0-1.7-1L15 3.5h-4l-.4 2.6a7.5 7.5 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.5a7.5 7.5 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7.5 7.5 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.5 7.5 0 0 0 1.7-1l2.3 1 2-3.4z" /> },
+  {
+    id: 'settings',
+    label: 'Settings',
+    icon: (
+      <Icon d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 13a7.5 7.5 0 0 0 0-2l2-1.5-2-3.4-2.3 1a7.5 7.5 0 0 0-1.7-1L15 3.5h-4l-.4 2.6a7.5 7.5 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.5a7.5 7.5 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7.5 7.5 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.5 7.5 0 0 0 1.7-1l2.3 1 2-3.4z" />
+    ),
+  },
   { id: 'about', label: 'About', icon: <Icon d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01" /> },
 ];
 
 function Icon({ d }: { d: string }) {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d={d} />
     </svg>
   );
@@ -58,22 +78,54 @@ export function App() {
           <img src="./icon.png" alt="" width={36} height={36} />
           <div>
             <b>Driftsky</b>
-            <span>{state.running ? `${EFFECT_INFO[state.settings.effect as EffectId]?.name ?? ''} is falling` : state.license.status === 'active' ? (state.settings.effect === 'off' ? 'Weather is off' : 'Paused') : 'Not activated'}</span>
+            <span>
+              {state.running
+                ? `${EFFECT_INFO[state.settings.effect as EffectId]?.name ?? ''} is falling`
+                : state.license.status === 'active'
+                  ? state.settings.effect === 'off'
+                    ? 'Weather is off'
+                    : 'Paused'
+                  : state.license.status === 'invalid'
+                    ? 'Key needs attention'
+                    : 'Not activated'}
+            </span>
           </div>
         </div>
         <nav role="tablist" aria-label="Settings sections">
           {TABS.map((t) => (
-            <button key={t.id} role="tab" aria-selected={current === t.id} className={current === t.id ? 'active' : ''} onClick={() => setTab(t.id)} data-tab={t.id}>
+            <button
+              key={t.id}
+              id={`tab-${t.id}`}
+              aria-controls="panel"
+              role="tab"
+              aria-selected={current === t.id}
+              className={current === t.id ? 'active' : ''}
+              onClick={() => setTab(t.id)}
+              data-tab={t.id}
+            >
               {t.icon}
               {t.label}
               {t.id === 'license' && state.license.status !== 'active' && <i className="dot" aria-label="needs attention" />}
-              {t.id === 'about' && (state.update.status === 'available' || state.update.status === 'ready') && <i className="dot" aria-label="update available" />}
+              {t.id === 'about' && (state.update.status === 'available' || state.update.status === 'ready') && (
+                <i className="dot" aria-label="update available" />
+              )}
             </button>
           ))}
         </nav>
       </aside>
-      <main className="content" role="tabpanel">
+      <main className="content" role="tabpanel" id="panel" aria-labelledby={`tab-${current}`}>
         <div className="drag-region" />
+        {state.update.required && (state.update.status === 'available' || state.update.status === 'ready') && current !== 'about' && (
+          <div className="banner" role="alert">
+            <div>
+              <b>Please update Driftsky</b>
+              <span>This version is no longer supported. Version {state.update.version} is ready to install.</span>
+            </div>
+            <button className="btn primary" onClick={() => setTab('about')}>
+              Update
+            </button>
+          </div>
+        )}
         {current === 'effects' && <EffectsTab state={state} goLicense={() => setTab('license')} />}
         {current === 'wallpapers' && <WallpapersTab state={state} />}
         {current === 'license' && <LicenseTab state={state} />}
@@ -236,7 +288,13 @@ function EffectsTab({ state, goLicense }: { state: AppState; goLicense: () => vo
       </div>
       <Notice result={a.result} />
       <div className="group">
-        <Switch id="weather-on" label="Weather" detail={s.effect === 'off' ? 'Off. Your screen stays clear.' : 'On'} checked={s.effect !== 'off'} onChange={(v) => (allowed ? a.run(() => api().setEffect(v ? s.lastEffect : 'off')) : goLicense())} />
+        <Switch
+          id="weather-on"
+          label="Weather"
+          detail={s.effect === 'off' ? 'Off. Your screen stays clear.' : 'On'}
+          checked={s.effect !== 'off'}
+          onChange={(v) => (allowed ? a.run(() => api().setEffect(v ? s.lastEffect : 'off')) : goLicense())}
+        />
         <div className="row">
           <label>
             <b>Amount</b>
@@ -248,13 +306,27 @@ function EffectsTab({ state, goLicense }: { state: AppState; goLicense: () => vo
               ['Normal', 1],
               ['Heavy', 1.6],
             ].map(([label, v]) => (
-              <button key={label} role="radio" aria-checked={Math.abs(s.intensity - (v as number)) < 0.01} className={Math.abs(s.intensity - (v as number)) < 0.01 ? 'on' : ''} onClick={() => api().setSettings({ intensity: v as number })}>
+              <button
+                key={label}
+                role="radio"
+                aria-checked={Math.abs(s.intensity - (v as number)) < 0.01}
+                className={Math.abs(s.intensity - (v as number)) < 0.01 ? 'on' : ''}
+                onClick={() => api().setSettings({ intensity: v as number })}
+              >
                 {label}
               </button>
             ))}
           </div>
         </div>
-        <Switch id="behind" label="Behind windows" detail="Fall only on the desktop, under your apps." checked={s.behindWindows} onChange={(v) => api().setSettings({ behindWindows: v })} />
+        {state.canGoBehind && (
+          <Switch
+            id="behind"
+            label="Behind windows"
+            detail="Fall only on the desktop, under your apps."
+            checked={s.behindWindows}
+            onChange={(v) => api().setSettings({ behindWindows: v })}
+          />
+        )}
       </div>
     </section>
   );
@@ -335,7 +407,7 @@ function LicenseTab({ state }: { state: AppState }) {
               <button className="btn" onClick={() => setReveal(!reveal)}>
                 {reveal ? 'Hide' : 'Show'}
               </button>
-              <button className="btn" onClick={() => navigator.clipboard.writeText(l.key!).then(() => a.setResult({ ok: true, message: 'Key copied.' }))}>
+              <button className="btn" onClick={() => a.run(() => api().copyKey())}>
                 Copy
               </button>
             </div>
@@ -363,8 +435,8 @@ function LicenseTab({ state }: { state: AppState }) {
                 Remove key…
               </button>
             ) : (
-              <div className="row-actions">
-                <button className="btn" onClick={() => (setConfirm(false), setOfferForce(false))}>
+              <div className="row-actions" onKeyDown={(e) => e.key === 'Escape' && (setConfirm(false), setOfferForce(false))}>
+                <button className="btn" onClick={() => (setConfirm(false), setOfferForce(false))} autoFocus>
                   Cancel
                 </button>
                 <button
@@ -380,6 +452,35 @@ function LicenseTab({ state }: { state: AppState }) {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+        <Notice result={a.result} />
+      </section>
+    );
+  }
+
+  if (l.status === 'invalid' && l.key) {
+    return (
+      <section>
+        <Header title="License" sub="Your key isn’t working on this computer right now." />
+        <p className="notice bad">{l.message ?? 'This key no longer works on this computer.'}</p>
+        <div className="group">
+          <div className="row">
+            <label>
+              <b>Key</b>
+              <code className="key">{l.key}</code>
+            </label>
+            <div className="row-actions">
+              <button className="btn primary" disabled={a.busy} onClick={() => a.run(() => api().recheck())}>
+                {a.busy ? 'Checking…' : 'Check again'}
+              </button>
+              <button className="btn" disabled={a.busy} onClick={() => a.run(() => api().activate(l.key!))}>
+                Add this computer again
+              </button>
+              <button className="btn danger" disabled={a.busy} onClick={() => a.run(() => api().removeKey(true))}>
+                Remove key
+              </button>
+            </div>
           </div>
         </div>
         <Notice result={a.result} />
@@ -405,7 +506,15 @@ function LicenseTab({ state }: { state: AppState }) {
         <label htmlFor="key" className="sr-only">
           License key
         </label>
-        <input id="key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="DRIFT-XXXX-XXXX-XXXX-XXXX" spellCheck={false} autoComplete="off" autoFocus />
+        <input
+          id="key"
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          placeholder="DRIFT-XXXX-XXXX-XXXX-XXXX"
+          spellCheck={false}
+          autoComplete="off"
+          autoFocus
+        />
         <button className="btn primary" disabled={a.busy || !key.trim()}>
           {a.busy ? 'Checking…' : 'Activate'}
         </button>
@@ -444,10 +553,34 @@ function SettingsTab({ state }: { state: AppState }) {
     <section>
       <Header title="Settings" />
       <div className="group">
-        <Switch id="login" label="Open at login" detail="Start Driftsky when you log in, so the weather is there when you are." checked={s.openAtLogin} onChange={(v) => set({ openAtLogin: v })} />
-        <Switch id="battery" label="Battery saver" detail="Half the weather and a lower frame rate on battery." checked={s.batterySaver} onChange={(v) => set({ batterySaver: v })} />
-        <Switch id="fullscreen" label="Pause for full-screen apps" detail="Stop while a game, video or presentation fills the screen." checked={s.pauseInFullScreen} onChange={(v) => set({ pauseInFullScreen: v })} />
-        <Switch id="updates" label="Check for updates automatically" detail="Every few hours. Nothing installs without you." checked={s.autoUpdate} onChange={(v) => set({ autoUpdate: v })} />
+        <Switch
+          id="login"
+          label="Open at login"
+          detail="Start Driftsky when you log in, so the weather is there when you are."
+          checked={s.openAtLogin}
+          onChange={(v) => set({ openAtLogin: v })}
+        />
+        <Switch
+          id="battery"
+          label="Battery saver"
+          detail="Half the weather and a lower frame rate on battery."
+          checked={s.batterySaver}
+          onChange={(v) => set({ batterySaver: v })}
+        />
+        <Switch
+          id="fullscreen"
+          label="Pause for full-screen apps"
+          detail="Stop while a game, video or presentation fills the screen."
+          checked={s.pauseInFullScreen}
+          onChange={(v) => set({ pauseInFullScreen: v })}
+        />
+        <Switch
+          id="updates"
+          label="Check for updates automatically"
+          detail="Every few hours. Nothing installs without you."
+          checked={s.autoUpdate}
+          onChange={(v) => set({ autoUpdate: v })}
+        />
       </div>
       <p className="fine">Clicks always go through the weather to whatever is underneath.</p>
     </section>
@@ -553,7 +686,15 @@ function Welcome({ state, onDone }: { state: AppState; onDone: () => void }) {
               <label htmlFor="wkey" className="sr-only">
                 License key
               </label>
-              <input id="wkey" value={key} onChange={(e) => setKey(e.target.value)} placeholder="DRIFT-XXXX-XXXX-XXXX-XXXX" spellCheck={false} autoComplete="off" autoFocus />
+              <input
+                id="wkey"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                placeholder="DRIFT-XXXX-XXXX-XXXX-XXXX"
+                spellCheck={false}
+                autoComplete="off"
+                autoFocus
+              />
               <button className="btn primary" disabled={a.busy || !key.trim()}>
                 {a.busy ? 'Checking…' : 'Activate'}
               </button>
@@ -589,7 +730,15 @@ function Welcome({ state, onDone }: { state: AppState; onDone: () => void }) {
           <p>You can change it any time from the menu bar.</p>
           <div className="effect-grid compact" role="radiogroup" aria-label="Effect">
             {EFFECTS.map((id) => (
-              <button key={id} role="radio" aria-checked={state.settings.effect === id} className={`effect-tile ${state.settings.effect === id ? 'selected' : ''}`} data-effect={id} disabled={!licensed} onClick={() => api().setEffect(id)}>
+              <button
+                key={id}
+                role="radio"
+                aria-checked={state.settings.effect === id}
+                className={`effect-tile ${state.settings.effect === id ? 'selected' : ''}`}
+                data-effect={id}
+                disabled={!licensed}
+                onClick={() => api().setEffect(id)}
+              >
                 <LivePreview effect={id} wallpaper={EFFECT_INFO[id].wallpaper} running={state.settings.effect === id} />
                 <span className="tile-text">
                   <b>{EFFECT_INFO[id].name}</b>

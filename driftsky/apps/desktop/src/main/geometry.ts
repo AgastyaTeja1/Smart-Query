@@ -24,7 +24,12 @@ export function isFullScreen(w: ScreenWindow, display: Box) {
 }
 
 /** Windows that touch this display, converted to its local coordinates. */
-export function frameFor(display: { bounds: Box; workArea: Box }, windows: ScreenWindow[], cursor: { x: number; y: number } | null, behindWindows: boolean): WorldFrame & { fullscreen: boolean } {
+export function frameFor(
+  display: { bounds: Box; workArea: Box },
+  windows: ScreenWindow[],
+  cursor: { x: number; y: number } | null,
+  behindWindows: boolean,
+): WorldFrame & { fullscreen: boolean } {
   const b = display.bounds;
   const local: WorldFrame['windows'] = [];
   let fullscreen = false;

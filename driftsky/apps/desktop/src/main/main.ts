@@ -1,4 +1,18 @@
-import { app, BrowserWindow, Menu, Tray, nativeImage, powerMonitor, screen, shell, ipcMain, dialog, type Display, type MenuItemConstructorOptions } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  Menu,
+  Tray,
+  nativeImage,
+  powerMonitor,
+  screen,
+  shell,
+  ipcMain,
+  dialog,
+  type Display,
+  type MenuItemConstructorOptions,
+} from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { z } from 'zod';
@@ -15,10 +29,14 @@ import { setWallpaper } from './wallpaper';
 // ---------------------------------------------------------------- environment
 
 const PLATFORM: Platform = process.platform === 'darwin' ? 'mac' : process.platform === 'win32' ? 'windows' : 'linux';
-const SITE = (process.env.DRIFTSKY_SITE || 'https://driftsky.app').replace(/\/+$/, '');
-const API = (process.env.DRIFTSKY_API || SITE).replace(/\/+$/, '');
-const TEST = process.env.DRIFTSKY_TEST === '1';
-const PREVIEW_MS = Number(process.env.DRIFTSKY_PREVIEW_MS) || 60_000;
+/** DRIFTSKY_* overrides exist for development and tests; a shipped build ignores them. */
+const env = (k: string) => (app.isPackaged ? undefined : process.env[k]);
+const SITE = (env('DRIFTSKY_SITE') || 'https://driftsky.app').replace(/\/+$/, '');
+const API = (env('DRIFTSKY_API') || SITE).replace(/\/+$/, '');
+const TEST = env('DRIFTSKY_TEST') === '1';
+const PREVIEW_MS = Number(env('DRIFTSKY_PREVIEW_MS')) || 60_000;
+/** "Behind windows" needs the desktop window level, which only macOS offers cleanly. */
+const CAN_GO_BEHIND = PLATFORM === 'mac';
 const LINKS = {
   site: SITE,
   buy: `${SITE}/#pricing`,
@@ -30,9 +48,10 @@ const LINKS = {
 const ROOT = path.join(__dirname, '..');
 const resource = (...p: string[]) => (app.isPackaged ? path.join(process.resourcesPath, ...p) : path.join(ROOT, 'resources', ...p));
 
-if (process.env.DRIFTSKY_USER_DATA) app.setPath('userData', process.env.DRIFTSKY_USER_DATA);
-// one Driftsky at a time
-if (!TEST && !app.requestSingleInstanceLock()) app.quit();
+if (env('DRIFTSKY_USER_DATA')) app.setPath('userData', env('DRIFTSKY_USER_DATA')!);
+// one Driftsky at a time: a second launch just opens Settings in the first, then exits at once
+const primary = TEST || app.requestSingleInstanceLock();
+if (!primary) app.exit(0);
 // transparent overlays on Linux need this; harmless elsewhere
 if (PLATFORM === 'linux') app.commandLine.appendSwitch('enable-transparent-visuals');
 
@@ -47,6 +66,7 @@ let windowSource: WindowSource;
 let preview: PreviewState = { active: false, endsAt: null, used: false };
 let previewTimer: NodeJS.Timeout | null = null;
 let paused: AppState['paused'] = null;
+const pauses = { locked: false, suspended: false };
 let onBattery = false;
 const overlays = new Map<number, { win: BrowserWindow; display: Display; ready: boolean; fullscreen: boolean }>();
 let tick: NodeJS.Timeout | null = null;
@@ -63,7 +83,8 @@ function appState(): AppState {
     update: updater.state,
     preview,
     running: allowed && s.effect !== 'off' && !paused,
-    paused,
+    paused: paused ?? (s.pauseInFullScreen && overlays.size > 0 && [...overlays.values()].every((o) => o.fullscreen) ? 'fullscreen' : null),
+    canGoBehind: CAN_GO_BEHIND,
     onBattery,
     links: LINKS,
   };
@@ -91,7 +112,7 @@ function overlayConfig(st: AppState, fullscreen: boolean): OverlayConfig {
 }
 
 function createOverlay(display: Display) {
-  const behind = store.data.settings.behindWindows;
+  const behind = CAN_GO_BEHIND && store.data.settings.behindWindows;
   const b = display.bounds;
   const win = new BrowserWindow({
     x: b.x,
@@ -175,9 +196,10 @@ function startTicker() {
     const cursor = screen.getCursorScreenPoint();
     for (const o of overlays.values()) {
       if (!o.ready || o.win.isDestroyed()) continue;
-      const f = frameFor(o.display, windows, cursor, st.behindWindows);
+      const f = frameFor(o.display, windows, cursor, CAN_GO_BEHIND && st.behindWindows);
       if (f.fullscreen !== o.fullscreen) {
         o.fullscreen = f.fullscreen;
+        refreshTray(appState());
         o.win.webContents.send('config', overlayConfig(appState(), f.fullscreen));
       }
       o.win.webContents.send('world', { windows: f.windows, floor: f.floor, pointer: f.pointer });
@@ -234,6 +256,7 @@ async function runAction(a: MenuAction): Promise<ActionResult> {
       store.updateSettings({ intensity: a.value });
       break;
     case 'toggle':
+      if (!CAN_GO_BEHIND) break;
       store.updateSettings({ behindWindows: !store.data.settings.behindWindows });
       rebuildOverlays();
       break;
@@ -255,7 +278,8 @@ async function runAction(a: MenuAction): Promise<ActionResult> {
       break;
     case 'check-updates':
       await updater.check(true);
-      if (updater.state.status === 'up-to-date' && !settingsWin) void dialog.showMessageBox({ message: 'Driftsky is up to date.', detail: `You have version ${app.getVersion()}.`, buttons: ['OK'] });
+      if (updater.state.status === 'up-to-date' && !settingsWin)
+        void dialog.showMessageBox({ message: 'Driftsky is up to date.', detail: `You have version ${app.getVersion()}.`, buttons: ['OK'] });
       break;
     case 'quit':
       quitting = true;
@@ -276,7 +300,14 @@ function setEffect(effect: EffectId | 'off'): ActionResult {
 
 async function applyWallpaper(id: WallpaperId): Promise<ActionResult> {
   if (!WALLPAPERS.some((w) => w.id === id)) return { ok: false, message: 'Unknown wallpaper.' };
-  const r = await setWallpaper({ id, sourceDir: resource('wallpapers'), dataDir: app.getPath('userData'), platform: process.platform });
+  if (!license.isLicensed && !preview.active) return { ok: false, message: 'The wallpapers come with Driftsky. Add your key to use them.' };
+  const r = await setWallpaper({
+    id,
+    sourceDir: resource('wallpapers'),
+    dataDir: app.getPath('userData'),
+    platform: process.platform,
+    log: TEST ? env('DRIFTSKY_WALLPAPER_LOG') : undefined,
+  });
   if (r.ok) store.updateSettings({ wallpaper: id });
   broadcast();
   return r;
@@ -316,7 +347,9 @@ function openSettings(tab = 'effects') {
     show: false,
     title: 'Driftsky',
     backgroundColor: '#f5f5f7',
-    ...(PLATFORM === 'mac' ? { titleBarStyle: 'hiddenInset' as const, vibrancy: 'sidebar' as const, trafficLightPosition: { x: 18, y: 18 } } : { autoHideMenuBar: true, icon: resource('icons', 'icon-256.png') }),
+    ...(PLATFORM === 'mac'
+      ? { titleBarStyle: 'hiddenInset' as const, vibrancy: 'sidebar' as const, trafficLightPosition: { x: 18, y: 18 } }
+      : { autoHideMenuBar: true, icon: resource('icons', 'icon-256.png') }),
     webPreferences: {
       preload: path.join(__dirname, 'preload-settings.cjs'),
       contextIsolation: true,
@@ -391,6 +424,7 @@ function registerIpc() {
     const before = store.data.settings;
     const next = store.updateSettings(p.data as Partial<Settings>);
     if (p.data.openAtLogin !== undefined) applyLoginItem(next.openAtLogin);
+    if (p.data.behindWindows !== undefined && !CAN_GO_BEHIND) return { ok: false, message: 'Behind windows is available on Mac.' };
     if (p.data.behindWindows !== undefined && p.data.behindWindows !== before.behindWindows) rebuildOverlays();
     broadcast();
     return { ok: true };
@@ -411,6 +445,18 @@ function registerIpc() {
     return r;
   });
   handle('preview', () => startPreview());
+  handle('copy-key', () => {
+    if (!license.state.key) return { ok: false, message: 'No key on this computer.' };
+    clipboard.writeText(license.state.key);
+    return { ok: true, message: 'Key copied.' };
+  });
+  handle('recheck', async () => {
+    await license.validate();
+    broadcast();
+    return license.isLicensed
+      ? { ok: true, message: 'Your key works again.' }
+      : { ok: false, message: license.state.message ?? 'The key still isn’t working on this computer.' };
+  });
   handle('buy', () => shell.openExternal(LINKS.buy));
   handle('upgrade', async () => {
     const url = await license.upgradeUrl(SITE);
@@ -441,14 +487,20 @@ function setPaused(p: AppState['paused']) {
   broadcast();
 }
 
+function updatePause(k: keyof typeof pauses, v: boolean) {
+  pauses[k] = v;
+  setPaused(pauses.suspended ? 'suspended' : pauses.locked ? 'locked' : null);
+}
+
 function watchPower() {
   onBattery = powerMonitor.isOnBatteryPower();
   powerMonitor.on('on-battery', () => ((onBattery = true), broadcast()));
   powerMonitor.on('on-ac', () => ((onBattery = false), broadcast()));
-  powerMonitor.on('lock-screen', () => setPaused('locked'));
-  powerMonitor.on('unlock-screen', () => setPaused(null));
-  powerMonitor.on('suspend', () => setPaused('suspended'));
-  powerMonitor.on('resume', () => setPaused(null));
+  powerMonitor.on('lock-screen', () => updatePause('locked', true));
+  powerMonitor.on('unlock-screen', () => updatePause('locked', false));
+  powerMonitor.on('suspend', () => updatePause('suspended', true));
+  // waking from sleep doesn't mean the screen is unlocked
+  powerMonitor.on('resume', () => updatePause('suspended', false));
 }
 
 // ---------------------------------------------------------------- lifecycle
@@ -456,19 +508,51 @@ function watchPower() {
 app.on('second-instance', () => openSettings());
 
 app.whenReady().then(async () => {
+  if (!primary) return;
   if (PLATFORM === 'mac') app.dock?.hide();
   store = new Store(app.getPath('userData'));
-  license = new LicenseManager(store, API, PLATFORM, app.getVersion(), () => broadcast());
-  const openInstaller = TEST && process.env.DRIFTSKY_OPEN_LOG ? async (f: string) => (fs.appendFileSync(process.env.DRIFTSKY_OPEN_LOG!, f + '\n'), '') : (f: string) => shell.openPath(f);
+  let wasLicensed = !!store.data.license.key && store.data.license.status === 'active';
+  license = new LicenseManager(
+    store,
+    API,
+    PLATFORM,
+    app.getVersion(),
+    () => {
+      // the key just stopped working (revoked, removed elsewhere, offline too long): say so
+      const now = license?.isLicensed ?? false;
+      if (wasLicensed && !now && license?.state.key) setImmediate(() => openSettings('license'));
+      wasLicensed = now;
+      broadcast();
+    },
+    fetch,
+    env('DRIFTSKY_DEVICE_ID'),
+  );
+  const openLog = TEST ? env('DRIFTSKY_OPEN_LOG') : undefined;
+  const openInstaller = openLog ? async (f: string) => (fs.appendFileSync(openLog, f + '\n'), '') : (f: string) => shell.openPath(f);
   updater = new Updater(API, PLATFORM, app.getVersion(), () => broadcast(), openInstaller, fetch, TEST);
   preview.used = store.data.preview.used;
-  windowSource = createWindowSource({ platform: process.platform, pid: process.pid, toDip: (r) => screen.screenToDipRect(null, r) });
+  windowSource = createWindowSource({
+    platform: process.platform,
+    pid: process.pid,
+    toDip: (r) => screen.screenToDipRect(null, r),
+    fakeFile: env('DRIFTSKY_FAKE_WINDOWS'),
+  });
 
   Menu.setApplicationMenu(
     Menu.buildFromTemplate(
       PLATFORM === 'mac'
         ? [
-            { role: 'appMenu', submenu: [{ role: 'about' }, { type: 'separator' }, { label: 'Settings…', accelerator: 'Command+,', click: () => openSettings() }, { type: 'separator' }, { role: 'hide' }, { role: 'quit' }] },
+            {
+              role: 'appMenu',
+              submenu: [
+                { role: 'about' },
+                { type: 'separator' },
+                { label: 'Settings…', accelerator: 'Command+,', click: () => openSettings() },
+                { type: 'separator' },
+                { role: 'hide' },
+                { role: 'quit' },
+              ],
+            },
             { role: 'editMenu' },
             { role: 'windowMenu' },
           ]
@@ -487,17 +571,29 @@ app.whenReady().then(async () => {
   rebuildOverlays();
   screen.on('display-added', rebuildOverlays);
   screen.on('display-removed', rebuildOverlays);
-  screen.on('display-metrics-changed', rebuildOverlays);
+  // a work-area or scale change (Dock resized, taskbar auto-hide): move the overlay, keep the snow
+  screen.on('display-metrics-changed', (_e, display) => {
+    const o = overlays.get(display.id);
+    if (!o || o.win.isDestroyed()) return rebuildOverlays();
+    o.display = display;
+    o.win.setBounds(display.bounds);
+  });
   startTicker();
 
-  if (!store.data.settings.onboarded || !license.state.key) openSettings(store.data.settings.onboarded ? 'license' : 'welcome');
+  if (!store.data.settings.onboarded || !license.isLicensed) openSettings(store.data.settings.onboarded ? 'license' : 'welcome');
 
   // check the key now and daily; updates shortly after launch and every 6 hours
   void license.validate();
   setInterval(() => void license.validate(), 24 * 3600_000).unref();
   if (!TEST) {
-    setTimeout(() => store.data.settings.autoUpdate && void updater.check(), 30_000).unref();
-    setInterval(() => store.data.settings.autoUpdate && void updater.check(), 6 * 3600_000).unref();
+    const auto = async () => {
+      if (!store.data.settings.autoUpdate) return;
+      const u = await updater.check();
+      // below the minimum version: don't bury it in the menu
+      if (u.required && (u.status === 'available' || u.status === 'ready')) openSettings('about');
+    };
+    setTimeout(() => void auto(), 30_000).unref();
+    setInterval(() => void auto(), 6 * 3600_000).unref();
   }
 
   if (TEST) exposeTestHooks();
@@ -532,7 +628,16 @@ function exposeTestHooks() {
       if (item.enabled === false) throw new Error(`menu item ${id} is disabled`);
       return runAction(item.action);
     },
-    overlays: () => [...overlays.values()].map((o) => ({ id: o.display.id, bounds: o.win.getBounds(), visible: o.win.isVisible(), ready: o.ready, ignoresMouse: true, alwaysOnTop: o.win.isAlwaysOnTop(), focusable: o.win.isFocusable() })),
+    overlays: () =>
+      [...overlays.values()].map((o) => ({
+        id: o.display.id,
+        bounds: o.win.getBounds(),
+        visible: o.win.isVisible(),
+        ready: o.ready,
+        ignoresMouse: true,
+        alwaysOnTop: o.win.isAlwaysOnTop(),
+        focusable: o.win.isFocusable(),
+      })),
     overlayStats: () => Promise.all([...overlays.values()].map((o) => o.win.webContents.executeJavaScript('window.__overlay && window.__overlay.stats()'))),
     setBattery: (v: boolean) => {
       onBattery = v;
@@ -544,5 +649,7 @@ function exposeTestHooks() {
     validate: () => license.validate(),
     checkUpdates: () => updater.check(true),
     effects: EFFECTS,
+    canGoBehind: CAN_GO_BEHIND,
+    power: (ev: 'lock-screen' | 'unlock-screen' | 'suspend' | 'resume') => powerMonitor.emit(ev as never),
   };
 }

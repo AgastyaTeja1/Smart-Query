@@ -110,14 +110,23 @@ export class MockProvider implements PaymentProvider {
  * Verify a `Stripe-Signature` header: `t=<unix>,v1=<hex hmac>[,v1=…]`, HMAC-SHA256 of
  * `${t}.${rawBody}` with the endpoint secret, and a 5-minute timestamp tolerance.
  */
-export function verifyStripeSignature(rawBody: Buffer | string, header: string | undefined, secret: string, toleranceSec = 300, nowSec = Math.floor(Date.now() / 1000)): boolean {
+export function verifyStripeSignature(
+  rawBody: Buffer | string,
+  header: string | undefined,
+  secret: string,
+  toleranceSec = 300,
+  nowSec = Math.floor(Date.now() / 1000),
+): boolean {
   if (!header || !secret) return false;
   const parts = header.split(',').map((p) => p.trim().split('='));
   const t = parts.find(([k]) => k === 't')?.[1];
   const sigs = parts.filter(([k]) => k === 'v1').map(([, v]) => v);
   if (!t || !/^\d+$/.test(t) || sigs.length === 0) return false;
   if (Math.abs(nowSec - Number(t)) > toleranceSec) return false;
-  const expected = crypto.createHmac('sha256', secret).update(`${t}.${typeof rawBody === 'string' ? rawBody : rawBody.toString('utf8')}`).digest();
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(`${t}.${typeof rawBody === 'string' ? rawBody : rawBody.toString('utf8')}`)
+    .digest();
   return sigs.some((s) => {
     if (!s || !/^[a-f0-9]+$/i.test(s)) return false;
     const got = Buffer.from(s, 'hex');

@@ -10,6 +10,9 @@ import { ReleaseStore } from './releases';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
+// one bad request must never take every customer's checkout down with it
+process.on('unhandledRejection', (e) => console.error('[unhandled rejection]', e));
+
 async function main() {
   const cfg = loadConfig();
   const db = openDb(cfg.DATABASE_PATH);
@@ -29,6 +32,8 @@ async function main() {
   }
   app.use(errorHandler);
 
+  if (cfg.NODE_ENV === 'production' && cfg.ALLOW_MOCK_PAYMENTS)
+    console.warn('[warning] ALLOW_MOCK_PAYMENTS is on: test checkout and /dev/outbox (every email, including keys) are public. Use only for staging.');
   const server = app.listen(cfg.PORT, cfg.HOST, () => {
     console.log(`Driftsky web on ${cfg.PUBLIC_URL} (port ${cfg.PORT}, payments=${payments.name}, mail=${cfg.MAIL}, env=${cfg.NODE_ENV})`);
   });

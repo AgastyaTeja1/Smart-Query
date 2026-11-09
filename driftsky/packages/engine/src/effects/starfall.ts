@@ -45,17 +45,26 @@ export class Starfall extends Effect {
   launch(at?: { x: number; y: number; vx: number; vy: number }) {
     const w = this.world;
     const r = this.rng;
-    const speed = r.range(650, 1050);
+    // scale to the screen so meteors cross it in about a second, whatever its size
+    const diag = Math.hypot(w.width, w.height);
+    const speed = r.range(0.45, 0.75) * Math.max(500, diag);
     const angle = r.range(0.45, 0.9); // radians below horizontal
+    const vx = Math.cos(angle) * speed * this.dir;
+    const vy = Math.sin(angle) * speed;
+    const y0 = r.range(-40, -10);
+    // aim for a point along the bottom edge, so the streak crosses the visible screen
+    const xLand = r.range(0.05, 1.05) * w.width;
+    const tLand = (w.height - y0) / vy;
     const m: Meteor = at
       ? { ...at, tail: 160, life: 3, hue: 205, width: 2 }
       : {
-          x: this.dir > 0 ? r.range(-w.width * 0.3, w.width * 0.8) : r.range(w.width * 0.2, w.width * 1.3),
-          y: r.range(-40, -10),
-          vx: Math.cos(angle) * speed * this.dir,
-          vy: Math.sin(angle) * speed,
-          tail: r.range(110, 230),
-          life: r.range(1.2, 2.6),
+          x: xLand - vx * tLand,
+          y: y0,
+          vx,
+          vy,
+          tail: r.range(0.08, 0.16) * Math.max(800, diag),
+          // most reach a window or the ground; some burn out on the way
+          life: r.chance(0.2) ? r.range(0.3, 0.9) * tLand : tLand + 0.5,
           hue: r.pick(HUES),
           width: r.range(1.4, 2.6),
         };
@@ -69,7 +78,8 @@ export class Starfall extends Effect {
     if (this.timer <= 0) {
       this.launch();
       if (r.chance(0.18)) this.launch(); // the occasional pair
-      this.timer = r.range(0.22, 0.85) / Math.max(0.2, this.cx.density);
+      // sqrt: small screens still get a lively sky, big ones don't get a meteor storm
+      this.timer = r.range(0.22, 0.85) / Math.max(0.45, Math.sqrt(this.cx.density));
     }
     for (let i = this.meteors.length - 1; i >= 0; i--) {
       const m = this.meteors[i];
@@ -89,7 +99,7 @@ export class Starfall extends Effect {
         this.meteors.splice(i, 1);
         continue;
       }
-      if (m.y > w.height + 50 || m.x < -w.width * 0.5 || m.x > w.width * 1.5) this.meteors.splice(i, 1);
+      if (m.y > w.height + 50 || m.x < -w.width * 2 || m.x > w.width * 3) this.meteors.splice(i, 1);
     }
     for (let i = this.sparks.length - 1; i >= 0; i--) {
       const p = this.sparks[i];

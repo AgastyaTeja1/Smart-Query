@@ -85,7 +85,14 @@ const W1: SceneWindow = { id: 'w', x: 0.12, y: 0.32, w: 0.76, h: 0.3 };
 /** Smooth 0→1→0 pulse over a period, so scripted windows ease rather than jump. */
 const ease = (x: number) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, x)));
 
-const REELS: Array<{ caption: string; effect: EffectId; wallpaper: (typeof WALLPAPERS)[number]['id']; dock?: boolean; script: (t: number) => ScriptFrame; windows: SceneWindow[] }> = [
+const REELS: Array<{
+  caption: string;
+  effect: EffectId;
+  wallpaper: (typeof WALLPAPERS)[number]['id'];
+  dock?: boolean;
+  script: (t: number) => ScriptFrame;
+  windows: SceneWindow[];
+}> = [
   {
     caption: 'Narrow a window and the snow drops off the edge',
     effect: 'snow',
@@ -135,12 +142,24 @@ function Reels() {
     <section className="section">
       <div className="wrap narrow center">
         <Title a="Throw a window." b="Watch the snow go." />
-        <p className="lede">Everything below is the real effect, running live in your browser. Snow builds up on your windows, and when you move one, it slides right off.</p>
+        <p className="lede">
+          Everything below is the real effect, running live in your browser. Snow builds up on your windows, and when you move one, it slides right off.
+        </p>
       </div>
       <div className="reels" role="list">
         {REELS.map((r, i) => (
           <div className="reel" role="listitem" key={i}>
-            <DesktopScene effect={r.effect} wallpaper={r.wallpaper} windows={r.windows} dock={r.dock} script={r.script} prewarm={r.effect === 'snow' ? 60 : 30} intensity={1.6} label={r.caption} testId={`reel-${i}`} />
+            <DesktopScene
+              effect={r.effect}
+              wallpaper={r.wallpaper}
+              windows={r.windows}
+              dock={r.dock}
+              script={r.script}
+              prewarm={r.effect === 'snow' ? 60 : 30}
+              intensity={1.6}
+              label={r.caption}
+              testId={`reel-${i}`}
+            />
             <span className="reel-caption">{r.caption}</span>
           </div>
         ))}
@@ -218,7 +237,14 @@ function Lightbox({ id, onClose }: { id: string; onClose: () => void }) {
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
     ref.current?.focus();
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      // the close button is the only control: keep focus inside the dialog
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        ref.current?.focus();
+      }
+    };
     window.addEventListener('keydown', key);
     document.body.style.overflow = 'hidden';
     return () => {
@@ -306,18 +332,25 @@ function Plan({ name, price, lines, plan, best }: { name: string; price: number;
 // ---------------------------------------------------------------- faq
 
 function Faq() {
-  const [open, setOpen] = useState<number | null>(null);
+  // several answers can be open at once, like <details>
+  const [open, setOpen] = useState<Set<number>>(() => new Set());
+  const toggle = (i: number) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(i)) next.add(i);
+      return next;
+    });
   return (
     <section className="section faq" id="faq">
       <div className="wrap faq-grid">
         <Title a="Good to know" b="before you buy." />
         <div className="faq-list">
           {FAQ.map((f, i) => {
-            const isOpen = open === i;
+            const isOpen = open.has(i);
             return (
               <div className={`faq-item ${isOpen ? 'open' : ''}`} key={f.q}>
                 <h3>
-                  <button type="button" aria-expanded={isOpen} aria-controls={`faq-${i}`} id={`faq-q-${i}`} onClick={() => setOpen(isOpen ? null : i)}>
+                  <button type="button" aria-expanded={isOpen} aria-controls={`faq-${i}`} id={`faq-q-${i}`} onClick={() => toggle(i)}>
                     {f.q}
                     <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
                       <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />

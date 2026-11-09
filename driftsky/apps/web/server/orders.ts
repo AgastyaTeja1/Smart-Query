@@ -42,12 +42,16 @@ export class Orders {
     const email = p.email.trim();
     const known = this.session(p.sessionId);
     const plan = (known?.plan ?? p.plan) as PlanId | undefined;
-    if (!plan || !(plan in PLANS)) throw new Error(`unknown plan for session ${p.sessionId}`);
+    if (!plan || !Object.hasOwn(PLANS, plan)) throw new Error(`unknown plan for session ${p.sessionId}`);
     if (known?.status === 'paid' && known.license_id) return this.licenses.byId(known.license_id) ?? null;
 
     let license: License | undefined;
     if (plan === 'upgrade') {
-      const target = known?.upgrade_license_id ? this.licenses.byId(known.upgrade_license_id) : p.upgradeKey ? this.licenses.byKey(normalizeKey(p.upgradeKey) ?? '') : undefined;
+      const target = known?.upgrade_license_id
+        ? this.licenses.byId(known.upgrade_license_id)
+        : p.upgradeKey
+          ? this.licenses.byKey(normalizeKey(p.upgradeKey) ?? '')
+          : undefined;
       if (!target) throw new Error(`upgrade target missing for ${p.sessionId}`);
       const before = target.seats;
       license = this.licenses.upgrade(target.id, p.paymentIntent);
@@ -55,7 +59,8 @@ export class Orders {
     } else {
       const r = this.licenses.issue({ email, plan, sessionId: p.sessionId, paymentIntent: p.paymentIntent });
       license = r.license;
-      if (r.created) await this.mail(email, licenseEmail({ key: license.key, seats: license.seats, publicUrl: this.cfg.PUBLIC_URL, support: this.cfg.SUPPORT_EMAIL }));
+      if (r.created)
+        await this.mail(email, licenseEmail({ key: license.key, seats: license.seats, publicUrl: this.cfg.PUBLIC_URL, support: this.cfg.SUPPORT_EMAIL }));
     }
     this.recordSession(p.sessionId, plan, this.payments.name);
     this.db.prepare("UPDATE checkout_sessions SET status = 'paid', email = ?, license_id = ? WHERE id = ?").run(email, license?.id ?? null, p.sessionId);
@@ -70,12 +75,22 @@ export class Orders {
     if (plan === 'upgrade') return false;
     // already a customer, or already offered: don't nag
     if (this.licenses.byEmail(p.email).length) return false;
-    const claimed = this.db.prepare('INSERT OR IGNORE INTO offers (email) VALUES (lower(?))').run(p.email);
+    // claim the address (a claim without a code is a failed attempt and can be retried)
+    const claimed = this.db
+      .prepare(
+        "INSERT INTO offers (email) VALUES (lower(?)) ON CONFLICT(email) DO UPDATE SET sent_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE offers.code IS NULL",
+      )
+      .run(p.email);
     if (Number(claimed.changes) === 0) return false;
-    const code = await this.payments.createOffer(p.email);
+    let code: string | null = null;
+    try {
+      code = await this.payments.createOffer(p.email);
+    } finally {
+      if (!code) this.db.prepare('DELETE FROM offers WHERE email = lower(?) AND code IS NULL').run(p.email);
+    }
     if (!code) return false;
     this.db.prepare('UPDATE offers SET code = ? WHERE email = lower(?)').run(code, p.email);
-    await this.mail(p.email, offerEmail({ code, plan: PLANS[plan && plan in PLANS ? plan : 'one'].label, publicUrl: this.cfg.PUBLIC_URL }));
+    await this.mail(p.email, offerEmail({ code, plan: PLANS[plan && Object.hasOwn(PLANS, plan) ? plan : 'one'].label, publicUrl: this.cfg.PUBLIC_URL }));
     return true;
   }
 

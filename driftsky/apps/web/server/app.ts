@@ -20,13 +20,14 @@ export interface AppDeps {
 }
 
 /** Human messages for license errors, shown as-is in the app. */
-export const LICENSE_MESSAGES: Record<LicenseError | 'not_activated', string> = {
-  bad_key: "That doesn’t look like a Driftsky key. It starts with DRIFT- and has four groups of four.",
-  not_found: "We couldn’t find that key. Check it was copied in full from the email.",
+export const LICENSE_MESSAGES: Record<LicenseError | 'not_activated' | 'bad_request', string> = {
+  bad_key: 'That doesn’t look like a Driftsky key. It starts with DRIFT- and has four groups of four.',
+  not_found: 'We couldn’t find that key. Check it was copied in full from the email.',
   revoked: 'This key has been turned off. Write to support if you think that’s a mistake.',
   seats_full: 'This key is already on as many computers as it covers. Remove it from one of them in the app, then try again.',
   bad_device: 'Something went wrong identifying this computer. Restart Driftsky and try again.',
   not_activated: 'This computer was removed from the key. Paste the key again to add it back.',
+  bad_request: 'Something in that request wasn’t right. Update Driftsky and try again.',
 };
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -51,6 +52,14 @@ const activateBody = z.object({
 });
 const keyDeviceBody = z.object({ key: z.string().max(200), device: deviceSchema });
 
+/** Name the field that's actually wrong. */
+function inputError(body: unknown): LicenseError | 'bad_request' {
+  const b = (body ?? {}) as Record<string, unknown>;
+  if (typeof b.key !== 'string' || !normalizeKey(b.key)) return 'bad_key';
+  if (!deviceSchema.safeParse(b.device).success) return 'bad_device';
+  return 'bad_request';
+}
+
 export function createApp(deps: AppDeps) {
   const { cfg, db, payments, mailer, releases } = deps;
   const licenses = new LicenseService(db, cfg.DEVICE_SALT);
@@ -60,15 +69,22 @@ export function createApp(deps: AppDeps) {
   if (cfg.TRUST_PROXY) app.set('trust proxy', 1);
   const isProd = cfg.NODE_ENV === 'production';
   /** Test helpers (outbox, limit reset) exist outside production, or on an explicitly mock-payment staging deploy. */
-  const devRoutes = !isProd || cfg.ALLOW_MOCK_PAYMENTS;
+  const devRoutes = payments.name === 'mock' && (!isProd || cfg.ALLOW_MOCK_PAYMENTS);
 
   const limits = {
     license: rateLimit({ windowMs: 60_000, max: 30, name: 'license' }),
     checkout: rateLimit({ windowMs: 60_000, max: 20, name: 'checkout' }),
     resend: rateLimit({ windowMs: 60 * 60_000, max: 5, name: 'resend' }),
+    // the thank-you page polls this while a payment confirms
+    session: rateLimit({ windowMs: 60_000, max: 120, name: 'session' }),
   };
 
+  let warnedProxy = false;
   app.use((req, res, next) => {
+    if (isProd && !cfg.TRUST_PROXY && !warnedProxy && req.headers['x-forwarded-for']) {
+      warnedProxy = true;
+      console.warn('[warning] requests arrive through a proxy but TRUST_PROXY is off: every visitor shares one rate limit. Set TRUST_PROXY=1.');
+    }
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('X-Frame-Options', 'DENY');
@@ -95,27 +111,46 @@ export function createApp(deps: AppDeps) {
     } catch {
       return res.status(400).json({ error: 'bad_json' });
     }
-    const seen = db.prepare('SELECT 1 FROM webhook_events WHERE id = ?').get(event.id);
-    if (seen) return res.json({ received: true, duplicate: true });
+    if (!event || typeof event !== 'object' || typeof event.id !== 'string' || typeof event.type !== 'string') {
+      return res.status(400).json({ error: 'bad_event' });
+    }
     try {
-      const o = event.data?.object ?? {};
+      const seen = db.prepare('SELECT 1 FROM webhook_events WHERE id = ?').get(event.id);
+      if (seen) return res.json({ received: true, duplicate: true });
+      const o = event.data?.object && typeof event.data.object === 'object' ? event.data.object : {};
       switch (event.type) {
         case 'checkout.session.completed':
         case 'checkout.session.async_payment_succeeded':
-          if (o.payment_status === 'paid' || event.type === 'checkout.session.async_payment_succeeded') {
+          // 'no_payment_required': a 100%-off promotion code still earns a key
+          if (o.payment_status === 'paid' || o.payment_status === 'no_payment_required' || event.type === 'checkout.session.async_payment_succeeded') {
             const email = o.customer_details?.email ?? o.customer_email;
             if (!email) throw new Error(`no email on session ${o.id}`);
-            await orders.fulfil({ sessionId: o.id, plan: o.metadata?.plan, email, paymentIntent: o.payment_intent ?? undefined, upgradeKey: o.metadata?.upgrade_key });
+            await orders.fulfil({
+              sessionId: o.id,
+              plan: o.metadata?.plan,
+              email,
+              paymentIntent: o.payment_intent ?? undefined,
+              upgradeKey: o.metadata?.upgrade_key,
+            });
           }
           break;
         case 'checkout.session.expired':
-          await orders.expired({ sessionId: o.id, email: o.customer_details?.email ?? o.customer_email, consent: o.consent?.promotions === 'opt_in', plan: o.metadata?.plan });
+          await orders.expired({
+            sessionId: o.id,
+            email: o.customer_details?.email ?? o.customer_email,
+            consent: o.consent?.promotions === 'opt_in',
+            plan: o.metadata?.plan,
+          });
           break;
         case 'charge.refunded':
-          if (o.payment_intent && (o.refunded || o.amount_refunded >= o.amount)) licenses.revokeByPaymentIntent(o.payment_intent, 'refunded');
+          if (typeof o.payment_intent === 'string' && (o.refunded || o.amount_refunded >= o.amount)) licenses.refundPayment(o.payment_intent, 'refunded');
           break;
         case 'charge.dispute.created':
-          if (o.payment_intent) licenses.revokeByPaymentIntent(o.payment_intent, 'disputed');
+          if (typeof o.payment_intent === 'string') licenses.refundPayment(o.payment_intent, 'disputed');
+          break;
+        case 'charge.dispute.closed':
+          // we won the dispute: the purchase stands, so the key works again
+          if (typeof o.payment_intent === 'string' && o.status === 'won') licenses.reinstateDisputed(o.payment_intent);
           break;
         default:
           break;
@@ -149,7 +184,12 @@ export function createApp(deps: AppDeps) {
       return res
         .status(503)
         .type('html')
-        .send(messagePage('Almost ready', `The ${platform === 'mac' ? 'Mac' : 'Windows'} download isn’t up yet. Check back soon, or write to ${esc(cfg.SUPPORT_EMAIL)}.`));
+        .send(
+          messagePage(
+            'Almost ready',
+            `The ${platform === 'mac' ? 'Mac' : 'Windows'} download isn’t up yet. Check back soon, or write to ${esc(cfg.SUPPORT_EMAIL)}.`,
+          ),
+        );
     }
     res.redirect(302, r.download ?? r.url);
   };
@@ -162,7 +202,11 @@ export function createApp(deps: AppDeps) {
   app.get('/api/checkout', limits.checkout, async (req, res, next) => {
     try {
       const plan = String(req.query.plan ?? '') as PlanId;
-      if (!(plan in PLANS)) return res.status(400).type('html').send(messagePage('Pick a plan', 'That plan doesn’t exist.', { href: '/#pricing', label: 'See pricing' }));
+      if (!Object.hasOwn(PLANS, plan))
+        return res
+          .status(400)
+          .type('html')
+          .send(messagePage('Pick a plan', 'That plan doesn’t exist.', { href: '/#pricing', label: 'See pricing' }));
       let upgradeLicenseId: number | undefined;
       let upgradeKey: string | undefined;
       let upgradeEmail: string | undefined;
@@ -172,7 +216,10 @@ export function createApp(deps: AppDeps) {
         const device = String(req.query.device ?? '');
         const onDevice = l && deviceSchema.safeParse(device).success && licenses.validate(l.key, device).valid;
         if (!l || l.status !== 'active' || !onDevice) {
-          return res.status(400).type('html').send(messagePage('Can’t upgrade this key', 'Open Driftsky on a computer that has the key and choose Upgrade from there.'));
+          return res
+            .status(400)
+            .type('html')
+            .send(messagePage('Can’t upgrade this key', 'Open Driftsky on a computer that has the key and choose Upgrade from there.'));
         }
         if (l.seats >= 5) return res.type('html').send(messagePage('Already upgraded', 'This key already covers 5 computers.'));
         upgradeLicenseId = l.id;
@@ -194,13 +241,14 @@ export function createApp(deps: AppDeps) {
   });
 
   /** Used by the thank-you page to show the key while the email is on its way. */
-  app.get('/api/checkout/session', limits.license, (req, res) => {
+  app.get('/api/checkout/session', limits.session, (req, res) => {
     const id = String(req.query.id ?? '');
     if (!/^cs_[A-Za-z0-9_]{6,200}$/.test(id)) return res.status(400).json({ error: 'bad_session' });
     const s = orders.session(id);
     if (!s) return res.status(404).json({ error: 'not_found' });
     const l = s.license_id ? licenses.byId(s.license_id) : undefined;
     if (s.status !== 'paid' || !l) return res.json({ status: s.status === 'expired' ? 'expired' : 'pending' });
+    if (l.status !== 'active') return res.json({ status: 'revoked' });
     res.setHeader('Cache-Control', 'no-store');
     res.json({ status: 'paid', email: l.email, key: l.key, seats: l.seats, plan: s.plan });
   });
@@ -211,7 +259,8 @@ export function createApp(deps: AppDeps) {
       const s = orders.session(req.params.id);
       if (!s) return res.status(404).type('html').send(messagePage('Checkout not found', 'Start again from the pricing section.'));
       const plan = PLANS[s.plan];
-      res.type('html').send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Test checkout · Driftsky</title>
+      res.type('html')
+        .send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Test checkout · Driftsky</title>
 <style>body{margin:0;font-family:-apple-system,Inter,Arial,sans-serif;background:#f5f5f7;display:grid;place-items:center;min-height:100vh;padding:16px;box-sizing:border-box}
 form{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:380px;box-shadow:0 10px 40px #0001}h1{font-size:20px;margin:0 0 4px}.p{font-size:32px;font-weight:700;margin:8px 0 20px}
 label{display:block;font-size:13px;color:#6e6e73;margin-bottom:6px}input[type=email]{width:100%;box-sizing:border-box;padding:12px;border:1px solid #d2d2d7;border-radius:10px;font-size:16px;margin-bottom:12px}
@@ -233,7 +282,11 @@ label{display:block;font-size:13px;color:#6e6e73;margin-bottom:6px}input[type=em
           await orders.expired({ sessionId: s.id, email: email || null, consent: req.body.consent === '1' });
           return res.redirect(303, '/#pricing');
         }
-        if (!z.string().email().safeParse(email).success) return res.status(400).type('html').send(messagePage('Check your email', 'That email address doesn’t look right.', { href: `/dev/checkout/${s.id}`, label: 'Try again' }));
+        if (!z.string().email().safeParse(email).success)
+          return res
+            .status(400)
+            .type('html')
+            .send(messagePage('Check your email', 'That email address doesn’t look right.', { href: `/dev/checkout/${s.id}`, label: 'Try again' }));
         await orders.fulfil({ sessionId: s.id, plan: s.plan, email, paymentIntent: 'pi_mock_' + s.id.slice(8) });
         res.redirect(303, `/thanks?session_id=${encodeURIComponent(s.id)}`);
       } catch (e) {
@@ -243,14 +296,14 @@ label{display:block;font-size:13px;color:#6e6e73;margin-bottom:6px}input[type=em
   }
 
   // ---- licenses ----
-  const licenseError = (res: Response, error: LicenseError | 'not_activated', extra: object = {}) => {
-    const status = { bad_key: 400, bad_device: 400, not_found: 404, revoked: 403, seats_full: 409, not_activated: 409 }[error];
+  const licenseError = (res: Response, error: LicenseError | 'not_activated' | 'bad_request', extra: object = {}) => {
+    const status = { bad_key: 400, bad_device: 400, bad_request: 400, not_found: 404, revoked: 403, seats_full: 409, not_activated: 409 }[error];
     res.status(status).json({ error, message: LICENSE_MESSAGES[error], ...extra });
   };
 
   app.post('/api/license/activate', limits.license, (req, res) => {
     const b = activateBody.safeParse(req.body);
-    if (!b.success) return licenseError(res, typeof req.body?.key === 'string' && normalizeKey(req.body.key) ? 'bad_device' : 'bad_key');
+    if (!b.success) return licenseError(res, inputError(req.body));
     const r = licenses.activate(b.data.key, b.data.device, { name: b.data.name, platform: b.data.platform, appVersion: b.data.appVersion });
     if (!r.ok) return licenseError(res, r.error, r.license ? { license: r.license } : {});
     res.json({ ok: true, key: normalizeKey(b.data.key), already: r.already, license: r.license });
@@ -258,7 +311,7 @@ label{display:block;font-size:13px;color:#6e6e73;margin-bottom:6px}input[type=em
 
   app.post('/api/license/deactivate', limits.license, (req, res) => {
     const b = keyDeviceBody.safeParse(req.body);
-    if (!b.success) return licenseError(res, 'bad_key');
+    if (!b.success) return licenseError(res, inputError(req.body));
     const r = licenses.deactivate(b.data.key, b.data.device);
     if (!r.ok) return licenseError(res, r.error);
     res.json({ ok: true, removed: r.removed });
@@ -266,7 +319,7 @@ label{display:block;font-size:13px;color:#6e6e73;margin-bottom:6px}input[type=em
 
   app.post('/api/license/validate', limits.license, (req, res) => {
     const b = keyDeviceBody.safeParse(req.body);
-    if (!b.success) return licenseError(res, 'bad_key');
+    if (!b.success) return licenseError(res, inputError(req.body));
     const r = licenses.validate(b.data.key, b.data.device);
     if (!r.valid) return res.json({ valid: false, reason: r.reason, message: LICENSE_MESSAGES[r.reason!], license: r.license ?? null });
     res.json({ valid: true, license: r.license });
@@ -276,7 +329,8 @@ label{display:block;font-size:13px;color:#6e6e73;margin-bottom:6px}input[type=em
     try {
       const b = z.object({ email: z.string().email().max(254) }).safeParse(req.body);
       if (!b.success) return res.status(400).json({ error: 'bad_email', message: 'That email address doesn’t look right.' });
-      await orders.resendKeys(b.data.email);
+      // don't wait for the email: response time must not reveal whether this address bought
+      void orders.resendKeys(b.data.email).catch((e) => console.error('[resend]', (e as Error).message));
       // same answer whether or not we found keys, so this can't be used to probe emails
       res.json({ ok: true, message: 'If that email bought Driftsky, the key is on its way.' });
     } catch (e) {
@@ -317,7 +371,10 @@ export function serveStatic(app: express.Express, dir: string) {
   const spaRoutes = new Set(['/', '/terms', '/privacy', '/refunds', '/thanks', '/lost-key']);
   app.get('*', (req, res) => {
     const html = fs.readFileSync(index, 'utf8');
-    res.status(spaRoutes.has(req.path.replace(/\/$/, '') || '/') ? 200 : 404).type('html').send(html);
+    res
+      .status(spaRoutes.has(req.path.replace(/\/$/, '') || '/') ? 200 : 404)
+      .type('html')
+      .send(html);
   });
 }
 
@@ -331,6 +388,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     return res.status(status).type('html').send(messagePage('That didn’t work', 'The request couldn’t be read.'));
   }
   console.error('[error]', req.method, req.path, err);
-  if (req.path.startsWith('/api/') && req.method !== 'GET') return res.status(500).json({ error: 'server_error', message: 'Something went wrong on our side. Try again in a moment.' });
+  if (req.path.startsWith('/api/') && req.method !== 'GET')
+    return res.status(500).json({ error: 'server_error', message: 'Something went wrong on our side. Try again in a moment.' });
   res.status(500).type('html').send(messagePage('Something went wrong', 'That didn’t work on our side. Try again in a moment.'));
 }

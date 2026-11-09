@@ -14,6 +14,14 @@ extraResources:
   - from: resources
     to: .
     filter: ["**/*"]
+# harden the shipped binary: no running as plain Node, no NODE_OPTIONS/--inspect, app code only from the signed asar
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
 asarUnpack:
   - node_modules/koffi/**
 mac:
