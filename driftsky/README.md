@@ -35,8 +35,8 @@ Snow never piles on a part of a window hidden behind another. Clicks always go t
 the effect halves and drops to 30 fps. It pauses when a full-screen app covers a display, when the
 screen locks and during sleep.
 
-The menu-bar menu switches effects, wallpaper, amount and "Behind windows" (desktop level, under
-your apps). The Settings window has Effects (live previews), Wallpapers (set on every screen),
+The menu-bar menu switches effects, wallpaper, amount and, on macOS, "Behind windows" (desktop
+level, under your apps; Windows has no clean equivalent, so the option isn't offered there). The Settings window has Effects (live previews), Wallpapers (set on every screen),
 License (activate, show/copy, remove from this computer, upgrade 1→5), Settings (open at login,
 battery saver, pause for full screen, auto-update) and About (updates). First launch walks through
 welcome → paste key (or a one-minute preview, or buy) → pick the weather.
@@ -79,7 +79,9 @@ npm run e2e  -w @driftsky/web           # website end to end in Chromium, deskto
 npm run e2e  -w @driftsky/desktop       # the real Electron app under Xvfb against the real license server
 ```
 
-The desktop e2e suite uses `DRIFTSKY_FAKE_WINDOWS` (a JSON window list it rewrites to "drag"
+`DRIFTSKY_*` environment overrides (API origin, fake windows, device ID, preview length, logs) only
+work in development builds; a packaged app ignores them. The desktop e2e suite uses
+`DRIFTSKY_FAKE_WINDOWS` (a JSON window list it rewrites to "drag"
 windows) because there are no real app windows in CI. The macOS and Windows window readers are
 covered by signature checks only; run the app on a real Mac/PC before release (see below).
 
@@ -100,6 +102,16 @@ Copy `apps/web/.env.example`. In production you need at least:
 | `VITE_POSTHOG_KEY` (build time) | optional website analytics, loaded only after cookie consent |
 
 Build and run: `npm run build -w @driftsky/web && npm start -w @driftsky/web`.
+
+## Verification
+
+Besides the automated suites, three independent agents exercised the product as users and
+reviewers (website QA across four screen sizes against koiart.app, desktop QA including
+performance and memory, and a code/security review). Everything they confirmed was fixed and covered
+by a regression test. Known limits: the macOS/Windows window readers and wallpaper setters can only
+be exercised on real hardware; the upgrade link carries the key in a URL (consider a short-lived
+token); the Swift "installer" app that KoiArt ships isn't replicated (the site serves the DMG / setup
+directly).
 
 ## Shipping the app
 
