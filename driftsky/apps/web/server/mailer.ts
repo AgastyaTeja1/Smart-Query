@@ -45,7 +45,7 @@ function layout(title: string, body: string) {
 <h1 style="font-size:22px;margin:0 0 12px;letter-spacing:-0.4px">${esc(title)}</h1>
 ${body}
 </div>
-<p style="color:#6e6e73;font-size:12px;margin-top:20px">You're getting this because of a purchase at driftsky.app.</p>
+<p style="color:#6e6e73;font-size:12px;margin-top:20px">You’re getting this because of a purchase at driftsky.app.</p>
 </div></body></html>`;
 }
 
@@ -68,7 +68,7 @@ Moving to a new computer? Remove the key in the app on the old one first, then p
 Questions? Just reply, or write to ${opts.support}.`;
   const html = layout(
     'Your Driftsky license key',
-    `<p style="margin:0 0 16px;line-height:1.5">Thanks for buying Driftsky. Here's your key. It works on ${computers}, Mac or PC.</p>
+    `<p style="margin:0 0 16px;line-height:1.5">Thanks for buying Driftsky. Here’s your key. It works on ${computers}, Mac or PC.</p>
 <div style="font-family:ui-monospace,Menlo,monospace;font-size:18px;letter-spacing:1px;background:#f5f5f7;border-radius:10px;padding:16px;text-align:center;user-select:all">${esc(opts.key)}</div>
 <ol style="line-height:1.7;padding-left:20px;margin:20px 0 0">
 <li>Download Driftsky for <a href="${esc(opts.publicUrl)}/download">Mac</a> or <a href="${esc(opts.publicUrl)}/download/windows">Windows</a>.</li>
@@ -102,10 +102,10 @@ export function keysReminderEmail(opts: { keys: Array<{ key: string; seats: numb
 }
 
 export function offerEmail(opts: { code: string; plan: string; publicUrl: string }): Omit<Mail, 'to'> {
-  const text = `Still thinking about Driftsky? Here's 20% off the ${opts.plan} plan. Use code ${opts.code} at checkout within 48 hours: ${opts.publicUrl}/#pricing`;
+  const text = `Still thinking about Driftsky? Here’s 20% off the ${opts.plan} plan. Use code ${opts.code} at checkout within 48 hours: ${opts.publicUrl}/#pricing`;
   const html = layout(
     '20% off, for the next 48 hours',
-    `<p style="line-height:1.5;margin:0 0 16px">Still thinking about Driftsky? Here's 20% off the ${esc(opts.plan)} plan. The code works once, for 48 hours.</p><div style="font-family:ui-monospace,Menlo,monospace;font-size:18px;background:#f5f5f7;border-radius:10px;padding:16px;text-align:center">${esc(opts.code)}</div><p style="margin-top:20px"><a href="${esc(opts.publicUrl)}/#pricing" style="background:#1f6fe0;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block">Pick up where you left off</a></p>`,
+    `<p style="line-height:1.5;margin:0 0 16px">Still thinking about Driftsky? Here’s 20% off the ${esc(opts.plan)} plan. The code works once, for 48 hours.</p><div style="font-family:ui-monospace,Menlo,monospace;font-size:18px;background:#f5f5f7;border-radius:10px;padding:16px;text-align:center">${esc(opts.code)}</div><p style="margin-top:20px"><a href="${esc(opts.publicUrl)}/#pricing" style="background:#1f6fe0;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;display:inline-block">Pick up where you left off</a></p>`,
   );
   return { subject: '20% off Driftsky for 48 hours', text, html };
 }

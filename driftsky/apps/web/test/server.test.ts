@@ -393,7 +393,7 @@ describe('releases & downloads', () => {
     expect((await request(t.app).get('/api/app')).status).toBe(404);
     const dl = await request(t.app).get('/download');
     expect(dl.status).toBe(503);
-    expect(dl.text).toContain("isn't up yet");
+    expect(dl.text).toContain('isn’t up yet');
     const sha = 'a'.repeat(64);
     fs.writeFileSync(
       t.releasesPath,

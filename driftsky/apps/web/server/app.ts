@@ -21,8 +21,8 @@ export interface AppDeps {
 
 /** Human messages for license errors, shown as-is in the app. */
 export const LICENSE_MESSAGES: Record<LicenseError | 'not_activated', string> = {
-  bad_key: "That doesn't look like a Driftsky key. It starts with DRIFT- and has four groups of four.",
-  not_found: "We couldn't find that key. Check it was copied in full from the email.",
+  bad_key: "That doesn’t look like a Driftsky key. It starts with DRIFT- and has four groups of four.",
+  not_found: "We couldn’t find that key. Check it was copied in full from the email.",
   revoked: 'This key has been turned off. Write to support if you think that’s a mistake.',
   seats_full: 'This key is already on as many computers as it covers. Remove it from one of them in the app, then try again.',
   bad_device: 'Something went wrong identifying this computer. Restart Driftsky and try again.',
@@ -149,7 +149,7 @@ export function createApp(deps: AppDeps) {
       return res
         .status(503)
         .type('html')
-        .send(messagePage('Almost ready', `The ${platform === 'mac' ? 'Mac' : 'Windows'} download isn't up yet. Check back soon, or write to ${esc(cfg.SUPPORT_EMAIL)}.`));
+        .send(messagePage('Almost ready', `The ${platform === 'mac' ? 'Mac' : 'Windows'} download isn’t up yet. Check back soon, or write to ${esc(cfg.SUPPORT_EMAIL)}.`));
     }
     res.redirect(302, r.download ?? r.url);
   };
