@@ -1,0 +1,58 @@
+appId: app.driftsky.desktop
+productName: Driftsky
+executableName: driftsky
+electronVersion: 38.2.2
+copyright: Copyright © 2026 Driftsky
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**
+  - package.json
+  - "!dist/**/*.map"
+extraResources:
+  - from: resources
+    to: .
+    filter: ["**/*"]
+asarUnpack:
+  - node_modules/koffi/**
+mac:
+  category: public.app-category.utilities
+  icon: resources/icons/icon-1024.png
+  target:
+    - target: dmg
+      arch: [universal]
+    - target: zip
+      arch: [universal]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  minimumSystemVersion: "14.0"
+  extendInfo:
+    # menu bar app: no Dock icon until a window opens
+    LSUIElement: true
+    NSAppleEventsUsageDescription: Driftsky uses System Events to set your wallpaper on every screen.
+  # set CSC_LINK / CSC_KEY_PASSWORD and APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID to sign and notarize
+  notarize: false
+dmg:
+  title: Driftsky
+  contents:
+    - { x: 150, y: 190, type: file }
+    - { x: 390, y: 190, type: link, path: /Applications }
+win:
+  icon: resources/icons/icon-256.png
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+  artifactName: Driftsky-Setup-${version}.${ext}
+nsis:
+  oneClick: true
+  perMachine: false
+  runAfterFinish: true
+  createDesktopShortcut: false
+  shortcutName: Driftsky
+linux:
+  target: [dir]
+  icon: resources/icons/icon-512.png
+  category: Utility
