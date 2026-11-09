@@ -1,0 +1,15 @@
+{
+  "name": "driftsky",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Driftsky: weather for your desktop. Monorepo for the weather engine, website + license server, and desktop app.",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "test": "npm run test -w @driftsky/engine && npm run test -w @driftsky/web && npm run test -w @driftsky/desktop",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build -w @driftsky/web && npm run build -w @driftsky/desktop",
+    "dev:web": "npm run dev -w @driftsky/web",
+    "dev:desktop": "npm run dev -w @driftsky/desktop"
+  },
+  "engines": { "node": ">=22.5" }
+}

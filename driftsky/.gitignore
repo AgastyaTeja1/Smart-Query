@@ -1,0 +1,12 @@
+node_modules
+dist
+out
+release
+*.log
+.env
+.env.*
+!.env.example
+data/*.db*
+test-results
+playwright-report
+.vite
