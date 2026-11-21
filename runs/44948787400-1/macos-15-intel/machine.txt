@@ -1,0 +1,23 @@
+ProductName:		macOS
+ProductVersion:		15.7.9
+BuildVersion:		24G830
+x86_64
+Intel(R) Core(TM) i7-8700B CPU @ 3.20GHz
+2026-11-21 20:55:37.609 system_profiler[58231:141953] Device PreExisted [00000001000002f2] Apple Paravirtual device
+          Resolution: 1920 x 1080 (1080p FHD - Full High Definition)
+          Main Display: Yes
+System-wide power settings:
+Currently in use:
+ standby              0
+ Sleep On Power Button 1
+ autorestart          0
+ hibernatefile        /var/vm/sleepimage
+ proximitywake        1
+ disksleep            0
+ standbydelayhigh     4200
+ sleep                0 (sleep prevented by addonsd)
+ hibernatemode        0
+ ttyskeepawake        1
+ displaysleep         0 (display sleep prevented by addonsd)
+ highstandbythreshold 50
+ standbydelaylow      4200
