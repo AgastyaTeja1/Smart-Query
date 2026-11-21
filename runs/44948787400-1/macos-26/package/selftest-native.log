@@ -1,0 +1,63 @@
+{
+  "ok": true,
+  "app": "1.0.0",
+  "electron": "38.2.2",
+  "os": "Darwin 25.6.0",
+  "arch": "arm64",
+  "packaged": true,
+  "checks": [
+    {
+      "name": "window list",
+      "ok": true,
+      "detail": {
+        "source": "mac",
+        "count": 0,
+        "ms": 2.57,
+        "sample": []
+      }
+    },
+    {
+      "name": "displays",
+      "ok": true,
+      "detail": [
+        {
+          "id": 1,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 768
+          },
+          "scale": 1,
+          "dock": {
+            "x": 0,
+            "y": 705,
+            "w": 1024,
+            "h": 63
+          }
+        }
+      ]
+    },
+    {
+      "name": "wallpapers bundled",
+      "ok": true,
+      "detail": [
+        "snow",
+        "rain",
+        "autumn",
+        "fireflies",
+        "stars"
+      ]
+    },
+    {
+      "name": "tray icons bundled",
+      "ok": true,
+      "detail": true
+    },
+    {
+      "name": "app files",
+      "ok": true,
+      "detail": true
+    }
+  ]
+}

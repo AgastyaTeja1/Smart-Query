@@ -1,0 +1,20 @@
+[WebServer] [warning] ALLOW_MOCK_PAYMENTS is on: test checkout and /dev/outbox (every email, including keys) are public. Use only for staging.
+
+Running 12 tests using 1 worker
+
+  ✓   1 e2e/app.spec.ts:89:5 › first run: onboarding, activation, choosing weather, and the overlay (12.4s)
+  ✓   2 e2e/app.spec.ts:148:5 › snow piles on windows and flies off when a window is dragged (12.8s)
+  ✓   3 e2e/app.spec.ts:177:5 › battery saver, pauses and full-screen apps (7.8s)
+  ✓   4 e2e/app.spec.ts:232:5 › wallpapers, effects menu, amount, behind windows, and settings survive a restart (12.1s)
+  ✓   5 e2e/app.spec.ts:301:5 › license tab: details, seat limits, removing and moving a key (5.4s)
+  ✓   6 e2e/app.spec.ts:342:5 › a key removed or revoked elsewhere stops the weather and says why (4.7s)
+  ✓   7 e2e/app.spec.ts:370:5 › try it for a minute, once (5.6s)
+  ✓   8 e2e/app.spec.ts:391:5 › updates: up to date, then a verified download of a new version, and a tampered one (3.7s)
+  ✓   9 e2e/app.spec.ts:436:5 › the settings window is locked down (3.0s)
+
+  ✓  10 e2e/mac.spec.ts:111:5 › real windows: CoreGraphics sees them, snow piles on them and flies off when they move (37.9s)
+
+  ✓  11 e2e/mac.spec.ts:202:5 › wallpaper is really set on every screen, without a permission prompt (6.1s)
+  ✓  12 e2e/mac.spec.ts:225:5 › Low Power Mode and the Dock (4.2s)
+
+  12 passed (2.0m)
