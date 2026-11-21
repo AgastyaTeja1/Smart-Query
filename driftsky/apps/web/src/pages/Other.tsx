@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { DownloadButtons } from '../components/Chrome';
-import { SUPPORT_EMAIL } from '../content';
+import { DEVICE, SUPPORT_EMAIL } from '../content';
 import { Link } from '../router';
 
 type SessionState =
@@ -75,7 +75,7 @@ export function Thanks() {
             </button>
           </div>
           <p className="lede">
-            We also sent it to <b>{s.email}</b>. It works on {s.seats === 1 ? '1 computer' : `up to ${s.seats} computers`}, Mac or PC.
+            We also sent it to <b>{s.email}</b>. It works on {s.seats === 1 ? '1 computer' : `up to ${s.seats} computers`}, {DEVICE}.
           </p>
           <DownloadButtons />
           <p className="fine">Open Driftsky, paste the key, pick the weather.</p>

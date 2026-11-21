@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '../router';
-import { PRICE_ONE, SUPPORT_EMAIL } from '../content';
+import { PRICE_ONE, SUPPORT_EMAIL, WINDOWS } from '../content';
 import { getConsent, setConsent, CONSENT_EVENT } from '../analytics';
 
 export function Logo({ size = 32 }: { size?: number }) {
@@ -143,13 +143,15 @@ export function DownloadButtons() {
           <b>Mac</b>
         </span>
       </a>
-      <a className="dl-btn" href="/download/windows" data-testid="dl-windows">
-        <WindowsIcon />
-        <span>
-          <small>Download for</small>
-          <b>Windows</b>
-        </span>
-      </a>
+      {WINDOWS && (
+        <a className="dl-btn" href="/download/windows" data-testid="dl-windows">
+          <WindowsIcon />
+          <span>
+            <small>Download for</small>
+            <b>Windows</b>
+          </span>
+        </a>
+      )}
     </div>
   );
 }

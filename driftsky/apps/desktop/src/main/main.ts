@@ -10,11 +10,14 @@ import {
   shell,
   ipcMain,
   dialog,
+  systemPreferences,
   type Display,
   type MenuItemConstructorOptions,
 } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import { execFile } from 'node:child_process';
+import { runSelfTest } from './selftest';
 import { z } from 'zod';
 import { EFFECTS, WALLPAPERS, isEffectId, type EffectId, type WallpaperId } from '@driftsky/engine';
 import type { ActionResult, AppState, OverlayConfig, Platform, PreviewState, Settings } from '../shared/types';
@@ -24,7 +27,7 @@ import { Updater } from './updater';
 import { buildMenu, type MenuAction, type MenuSpec } from './menu';
 import { createWindowSource, type WindowSource } from './windowsource';
 import { frameFor } from './geometry';
-import { setWallpaper } from './wallpaper';
+import { getMacWallpapers, setWallpaper } from './wallpaper';
 
 // ---------------------------------------------------------------- environment
 
@@ -50,7 +53,7 @@ const resource = (...p: string[]) => (app.isPackaged ? path.join(process.resourc
 
 if (env('DRIFTSKY_USER_DATA')) app.setPath('userData', env('DRIFTSKY_USER_DATA')!);
 // one Driftsky at a time: a second launch just opens Settings in the first, then exits at once
-const primary = TEST || app.requestSingleInstanceLock();
+const primary = TEST || process.argv.some((a) => a.startsWith('--self-test')) || app.requestSingleInstanceLock();
 if (!primary) app.exit(0);
 // transparent overlays on Linux need this; harmless elsewhere
 if (PLATFORM === 'linux') app.commandLine.appendSwitch('enable-transparent-visuals');
@@ -66,7 +69,9 @@ let windowSource: WindowSource;
 let preview: PreviewState = { active: false, endsAt: null, used: false };
 let previewTimer: NodeJS.Timeout | null = null;
 let paused: AppState['paused'] = null;
-const pauses = { locked: false, suspended: false };
+const pauses = { locked: false, suspended: false, asleep: false };
+let lowPowerMode = false;
+const SELF_TEST = process.argv.some((a) => a === '--self-test' || a.startsWith('--self-test='));
 let onBattery = false;
 const overlays = new Map<number, { win: BrowserWindow; display: Display; ready: boolean; fullscreen: boolean }>();
 let tick: NodeJS.Timeout | null = null;
@@ -86,6 +91,7 @@ function appState(): AppState {
     paused: paused ?? (s.pauseInFullScreen && overlays.size > 0 && [...overlays.values()].every((o) => o.fullscreen) ? 'fullscreen' : null),
     canGoBehind: CAN_GO_BEHIND,
     onBattery,
+    lowPowerMode,
     links: LINKS,
   };
 }
@@ -106,7 +112,7 @@ function overlayConfig(st: AppState, fullscreen: boolean): OverlayConfig {
   return {
     effect: allowed ? st.settings.effect : 'off',
     intensity: st.settings.intensity,
-    lowPower: st.onBattery && st.settings.batterySaver,
+    lowPower: (st.onBattery || st.lowPowerMode) && st.settings.batterySaver,
     paused: !!st.paused || (fullscreen && st.settings.pauseInFullScreen),
   };
 }
@@ -150,6 +156,8 @@ function createOverlay(display: Display) {
   win.setIgnoreMouseEvents(true);
   if (!behind) win.setAlwaysOnTop(true, 'screen-saver');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+  // the overlay is part of the desktop, not a window: keep it out of Mission Control and Exposé
+  if (PLATFORM === 'mac') win.setHiddenInMissionControl(true);
   win.setBounds(b);
   lockDown(win);
   const entry = { win, display, ready: false, fullscreen: false };
@@ -490,7 +498,7 @@ function setPaused(p: AppState['paused']) {
 
 function updatePause(k: keyof typeof pauses, v: boolean) {
   pauses[k] = v;
-  setPaused(pauses.suspended ? 'suspended' : pauses.locked ? 'locked' : null);
+  setPaused(pauses.suspended ? 'suspended' : pauses.asleep ? 'asleep' : pauses.locked ? 'locked' : null);
 }
 
 function watchPower() {
@@ -502,6 +510,28 @@ function watchPower() {
   powerMonitor.on('suspend', () => updatePause('suspended', true));
   // waking from sleep doesn't mean the screen is unlocked
   powerMonitor.on('resume', () => updatePause('suspended', false));
+  if (PLATFORM === 'mac') {
+    // displays asleep (lid closed on an external setup, screen saver timeout): nothing to draw for
+    systemPreferences.subscribeWorkspaceNotification('NSWorkspaceScreensDidSleepNotification', () => updatePause('asleep', true));
+    systemPreferences.subscribeWorkspaceNotification('NSWorkspaceScreensDidWakeNotification', () => updatePause('asleep', false));
+    // Low Power Mode has no event in Electron: check it now and then (cheap)
+    const check = () =>
+      readLowPowerMode().then((v) => {
+        if (v !== lowPowerMode) {
+          lowPowerMode = v;
+          broadcast();
+        }
+      });
+    void check();
+    setInterval(() => void check(), 30_000).unref();
+  }
+}
+
+/** `pmset -g` reports "lowpowermode 1" while Low Power Mode is on (macOS 12+). */
+function readLowPowerMode(): Promise<boolean> {
+  return new Promise((resolve) =>
+    execFile('/usr/bin/pmset', ['-g'], { timeout: 3000 }, (err, out) => resolve(!err && /\blowpowermode\s+1\b/.test(String(out)))),
+  );
 }
 
 // ---------------------------------------------------------------- lifecycle
@@ -510,6 +540,13 @@ app.on('second-instance', () => openSettings());
 
 app.whenReady().then(async () => {
   if (!primary) return;
+  if (SELF_TEST) {
+    // `Driftsky --self-test[=report.json]`: check this Mac can run the weather, print a report, quit
+    const out = process.argv.find((a) => a.startsWith('--self-test='))?.slice('--self-test='.length);
+    const code = await runSelfTest({ out, resource, platform: process.platform, version: app.getVersion() });
+    app.exit(code);
+    return;
+  }
   if (PLATFORM === 'mac') app.dock?.hide();
   store = new Store(app.getPath('userData'));
   let wasLicensed = !!store.data.license.key && store.data.license.status === 'active';
@@ -650,6 +687,13 @@ function exposeTestHooks() {
     validate: () => license.validate(),
     checkUpdates: () => updater.check(true),
     effects: EFFECTS,
+    windows: () => windowSource.list(),
+    getWallpapers: () => (PLATFORM === 'mac' ? getMacWallpapers() : Promise.resolve([])),
+    windowSourceName: () => windowSource.name,
+    setLowPowerMode: (v: boolean) => {
+      lowPowerMode = v;
+      broadcast();
+    },
     canGoBehind: CAN_GO_BEHIND,
     power: (ev: 'lock-screen' | 'unlock-screen' | 'suspend' | 'resume') => powerMonitor.emit(ev as never),
   };

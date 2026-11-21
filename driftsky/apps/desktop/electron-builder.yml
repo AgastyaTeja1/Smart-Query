@@ -1,6 +1,5 @@
 appId: app.driftsky.desktop
 productName: Driftsky
-executableName: driftsky
 electronVersion: 38.2.2
 copyright: Copyright © 2026 Driftsky
 directories:
@@ -22,6 +21,8 @@ electronFuses:
   enableNodeCliInspectArguments: false
   enableEmbeddedAsarIntegrityValidation: true
   onlyLoadAppFromAsar: true
+  # flipping fuses edits the binary: re-sign ad hoc so unsigned test builds still launch on Apple silicon
+  resetAdHocDarwinSignature: true
 asarUnpack:
   - node_modules/koffi/**
 mac:
@@ -61,6 +62,7 @@ nsis:
   createDesktopShortcut: false
   shortcutName: Driftsky
 linux:
+  executableName: driftsky
   target: [dir]
   icon: resources/icons/icon-512.png
   category: Utility

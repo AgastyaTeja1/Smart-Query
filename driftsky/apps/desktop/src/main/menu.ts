@@ -39,7 +39,7 @@ export function statusLine(s: AppState): string {
   if (s.paused === 'fullscreen') return `${name} · paused for full screen`;
   if (s.paused) return `${name} · paused`;
   if (s.preview.active) return `${name} · preview`;
-  return s.onBattery && s.settings.batterySaver ? `${name} · battery saver` : `${name}`;
+  return (s.onBattery || s.lowPowerMode) && s.settings.batterySaver ? `${name} · battery saver` : `${name}`;
 }
 
 export function buildMenu(s: AppState): MenuSpec[] {

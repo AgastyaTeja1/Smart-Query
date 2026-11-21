@@ -20,7 +20,7 @@ export function Terms() {
   return (
     <LegalPage title="Terms">
       <p>
-        These terms cover buying and using Driftsky. Buying gets you a lifetime license key for Driftsky on your own computers, Mac or PC, including every
+        These terms cover buying and using Driftsky. Buying gets you a lifetime license key for Driftsky on your own computers, including every
         update we release.
       </p>
       <h2>Payment</h2>
@@ -108,7 +108,7 @@ export function Refunds() {
       <h2>When we refund</h2>
       <p>
         If Driftsky doesn’t run properly on your computer and you tell us within 3 days of buying, we refund you in full. Please tell us what you see and which
-        system you’re on (for example macOS 15 on a MacBook Air, or Windows 11) so we can try to fix it first.
+        system you’re on (for example macOS 15 on a MacBook Air) so we can try to fix it first.
       </p>
       <h2>When we don’t</h2>
       <p>Changing your mind, buying by mistake when the app works, or asking after 3 days aren’t covered.</p>

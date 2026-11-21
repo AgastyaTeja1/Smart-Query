@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { EFFECT_INFO, EFFECTS, WALLPAPERS, type EffectId } from '@driftsky/engine';
 import { DesktopScene, type SceneWindow, type ScriptFrame } from '../components/DesktopScene';
 import { DownloadButtons } from '../components/Chrome';
-import { FAQ, PRICE_FIVE, PRICE_ONE, STEPS } from '../content';
+import { DEVICE, DEVICES, FAQ, PRICE_FIVE, PRICE_ONE, STEPS, WINDOWS } from '../content';
 import { Link, scrollToHash } from '../router';
 
 export function Home() {
@@ -295,11 +295,17 @@ function Pricing() {
         <p className="lede">Every effect, every wallpaper, every update. No subscription.</p>
       </div>
       <div className="wrap plans">
-        <Plan name="1 computer" price={PRICE_ONE} lines={['1 Mac or PC', 'Everything included', 'All future updates']} plan="one" />
-        <Plan name="5 computers" price={PRICE_FIVE} lines={['Up to 5 Macs or PCs', 'Everything included', 'All future updates']} plan="five" best />
+        <Plan name="1 computer" price={PRICE_ONE} lines={[`1 ${DEVICE}`, 'Everything included', 'All future updates']} plan="one" />
+        <Plan name="5 computers" price={PRICE_FIVE} lines={[`Up to 5 ${DEVICES}`, 'Everything included', 'All future updates']} plan="five" best />
       </div>
       <p className="fine center">
-        macOS 14 or later · Windows 10 or 11 · <a href="/download">Download for Mac</a> · <a href="/download/windows">Download for Windows</a>
+        macOS 14 or later{WINDOWS && ' · Windows 10 or 11'} · <a href="/download">Download for Mac</a>
+        {WINDOWS && (
+          <>
+            {' '}
+            · <a href="/download/windows">Download for Windows</a>
+          </>
+        )}
       </p>
     </section>
   );

@@ -36,6 +36,8 @@ const schema = z.object({
   FILES_DIR: z.string().optional(),
 
   POSTHOG_KEY: z.string().optional(),
+  /** Offer the Windows download in emails (the website reads VITE_WINDOWS at build time). */
+  WINDOWS_ENABLED: bool,
   TRUST_PROXY: bool,
 });
 

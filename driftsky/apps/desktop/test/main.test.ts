@@ -192,6 +192,7 @@ function state(over: Partial<AppState> = {}): AppState {
     running: true,
     paused: null,
     onBattery: false,
+    lowPowerMode: false,
     canGoBehind: true,
     links: { site: '', buy: '', privacy: '', terms: '', lostKey: '', support: '' },
     ...over,
@@ -258,6 +259,8 @@ describe('tray menu', () => {
     expect(statusLine(state())).toBe('Snow');
     expect(statusLine(state({ paused: 'fullscreen' }))).toMatch(/full screen/);
     expect(statusLine(state({ onBattery: true }))).toMatch(/battery saver/);
+    expect(statusLine(state({ lowPowerMode: true }))).toMatch(/battery saver/);
+    expect(statusLine(state({ paused: 'asleep' }))).toMatch(/paused/);
     const off = state();
     off.settings.effect = 'off';
     expect(statusLine(off)).toBe('Driftsky is off');

@@ -280,9 +280,13 @@ test('download buttons: friendly page before a release, redirect after', async (
       windows: { latest: '1.0.0', url: 'https://downloads.example.com/Driftsky-Setup-1.0.0.exe', sha256: sha },
     }),
   );
-  const r = await request.get('/download/windows', { maxRedirects: 0 });
+  const r = await request.get('/download', { maxRedirects: 0 });
   expect(r.status()).toBe(302);
-  expect(r.headers().location).toBe('https://downloads.example.com/Driftsky-Setup-1.0.0.exe');
+  expect(r.headers().location).toBe('https://downloads.example.com/Driftsky-1.0.0.dmg');
+  // Mac-only launch: no Windows button anywhere
+  await page.goto('/');
+  await expect(page.getByTestId('dl-windows')).toHaveCount(0);
+  await expect(page.getByText(/Windows/)).toHaveCount(0);
   expect((await (await request.get('/api/app?platform=mac')).json()).latest).toBe('1.0.0');
   fs.rmSync(RELEASES, { force: true });
 });

@@ -57,8 +57,10 @@ export interface AppState {
   preview: PreviewState;
   /** Effects are actually showing (licensed or previewing, not paused). */
   running: boolean;
-  paused: null | 'locked' | 'suspended' | 'fullscreen';
+  paused: null | 'locked' | 'suspended' | 'asleep' | 'fullscreen';
   onBattery: boolean;
+  /** macOS Low Power Mode is on. */
+  lowPowerMode: boolean;
   /** "Behind windows" is only offered where it works properly (macOS). */
   canGoBehind: boolean;
   links: { site: string; buy: string; privacy: string; terms: string; lostKey: string; support: string };

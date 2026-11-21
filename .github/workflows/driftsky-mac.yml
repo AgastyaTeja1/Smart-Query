@@ -1,0 +1,118 @@
+name: Driftsky macOS
+
+# Builds and tests Driftsky on real Macs: unit tests, the desktop app end to end (including real
+# windows through CoreGraphics, real wallpaper, screenshots), the website in Chromium, then the
+# universal DMG installed to /Applications and self-tested on Apple silicon and Intel (Rosetta).
+# Logs, reports and screenshots are pushed to the `driftsky-mac-ci` branch.
+on:
+  push:
+    branches: [feature/driftsky-desktop-weather, claude/koiart-app-clone-5r0adx, main]
+    paths: ['driftsky/**', '.github/workflows/driftsky-mac.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: driftsky-mac-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: driftsky
+    env:
+      RESULTS: ${{ github.workspace }}/ci-results
+      # unsigned unless signing secrets are configured (see README)
+      CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK && 'true' || 'false' }}
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: driftsky/package-lock.json
+
+      - name: Machine
+        run: |
+          mkdir -p "$RESULTS"
+          { sw_vers; uname -m; sysctl -n machdep.cpu.brand_string; system_profiler SPDisplaysDataType | grep -E 'Resolution|Display Type|Main Display' ; } > "$RESULTS/machine.txt" 2>&1 || true
+          cat "$RESULTS/machine.txt"
+
+      - name: Install
+        run: npm ci
+
+      - name: Unit tests
+        id: unit
+        run: npm test 2>&1 | tee "$RESULTS/unit-tests.txt"; exit ${PIPESTATUS[0]}
+
+      - name: Build
+        id: build
+        run: |
+          npm run build -w @driftsky/web 2>&1 | tail -5
+          node apps/desktop/scripts/build.mjs
+          npx playwright install chromium
+
+      - name: Desktop end to end (incl. real macOS windows)
+        id: desktop_e2e
+        if: steps.build.outcome == 'success'
+        working-directory: driftsky/apps/desktop
+        run: MAC_RESULTS="$RESULTS/mac-e2e" npx playwright test --trace off --reporter=list app.spec mac.spec 2>&1 | tee "$RESULTS/desktop-e2e.txt"; exit ${PIPESTATUS[0]}
+
+      - name: Website end to end (Chromium on macOS)
+        id: web_e2e
+        if: steps.build.outcome == 'success' && !cancelled()
+        working-directory: driftsky/apps/web
+        run: npx playwright test --trace off --reporter=list 2>&1 | tee "$RESULTS/web-e2e.txt"; exit ${PIPESTATUS[0]}
+
+      - name: Package (universal DMG)
+        id: package
+        if: steps.build.outcome == 'success' && !cancelled()
+        working-directory: driftsky/apps/desktop
+        run: |
+          if [ -z "$CSC_LINK" ]; then unset CSC_LINK CSC_KEY_PASSWORD; fi
+          npx electron-builder --mac --publish never 2>&1 | tee "$RESULTS/package.txt"; exit ${PIPESTATUS[0]}
+
+      - name: Verify the DMG like a customer
+        id: verify
+        if: steps.package.outcome == 'success' && !cancelled()
+        working-directory: driftsky/apps/desktop
+        run: scripts/verify-mac-package.sh "$RESULTS"
+
+      - name: Keep the DMG
+        if: steps.package.outcome == 'success' && matrix.os == 'macos-15'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Driftsky-mac-unsigned
+          path: driftsky/apps/desktop/release/*.dmg
+          retention-days: 14
+
+      - name: Publish results
+        if: always()
+        working-directory: ${{ github.workspace }}
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          printf 'unit=%s build=%s desktop_e2e=%s web_e2e=%s package=%s verify=%s\nsha=%s\n' \
+            "${{ steps.unit.outcome }}" "${{ steps.build.outcome }}" "${{ steps.desktop_e2e.outcome }}" "${{ steps.web_e2e.outcome }}" \
+            "${{ steps.package.outcome }}" "${{ steps.verify.outcome }}" "${{ github.sha }}" > "$RESULTS/outcome.txt"
+          cat "$RESULTS/outcome.txt"
+          pub=$(mktemp -d); cd "$pub"
+          git init -q && git config user.name driftsky-ci && git config user.email driftsky-ci@users.noreply.github.com
+          git remote add origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git"
+          if git fetch -q origin driftsky-mac-ci; then git checkout -q -b driftsky-mac-ci FETCH_HEAD; else git checkout -q --orphan driftsky-mac-ci; fi
+          dest="runs/${{ github.run_id }}-${{ github.run_attempt }}/${{ matrix.os }}"
+          mkdir -p "$dest" && cp -R "$RESULTS/." "$dest/"
+          find "$dest" -size +20M -delete
+          git add -A && git commit -qm "Driftsky macOS results ${{ github.run_id }} ${{ matrix.os }}"
+          for i in 1 2 3 4 5; do git push -q origin driftsky-mac-ci && break; sleep $((i * 3)); git pull -q --rebase origin driftsky-mac-ci; done

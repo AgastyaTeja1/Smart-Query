@@ -27,9 +27,7 @@ export async function setWallpaper(opts: { id: string; sourceDir: string; dataDi
   }
   try {
     if (opts.platform === 'darwin') {
-      // every desktop = every screen and Space currently known
-      const script = `tell application "System Events" to tell every desktop to set picture to POSIX file ${JSON.stringify(dest)}`;
-      await run('/usr/bin/osascript', ['-e', script], { timeout: 15_000 });
+      await setMacWallpaper(dest);
     } else if (opts.platform === 'win32') {
       await setWindowsWallpaper(dest);
     } else {
@@ -62,4 +60,47 @@ async function setWindowsWallpaper(file: string) {
   const SPI_SETDESKWALLPAPER = 0x0014;
   const SPIF_UPDATEINIFILE_SENDCHANGE = 0x01 | 0x02;
   if (!SystemParametersInfoW(SPI_SETDESKWALLPAPER, 0, file, SPIF_UPDATEINIFILE_SENDCHANGE)) throw new Error('SystemParametersInfoW failed');
+}
+
+/**
+ * macOS: NSWorkspace.setDesktopImageURL for every screen, through JavaScript for Automation. It runs
+ * inside osascript itself, so unlike scripting System Events it needs no Automation permission.
+ * The path is passed as an argument, never spliced into the script.
+ */
+const SET_JXA = `
+function run(argv) {
+  ObjC.import('AppKit');
+  const url = $.NSURL.fileURLWithPath(argv[0]);
+  const ws = $.NSWorkspace.sharedWorkspace;
+  const screens = $.NSScreen.screens;
+  let done = 0;
+  for (let i = 0; i < screens.count; i++) {
+    const err = Ref();
+    if (ws.setDesktopImageURLForScreenOptionsError(url, screens.objectAtIndex(i), $.NSDictionary.dictionary, err)) done++;
+  }
+  if (done !== screens.count) throw new Error('set ' + done + ' of ' + screens.count + ' screens');
+  return String(done);
+}`;
+
+const GET_JXA = `
+function run() {
+  ObjC.import('AppKit');
+  const ws = $.NSWorkspace.sharedWorkspace;
+  const screens = $.NSScreen.screens;
+  const out = [];
+  for (let i = 0; i < screens.count; i++) {
+    const u = ws.desktopImageURLForScreen(screens.objectAtIndex(i));
+    out.push(u.isNil() ? '' : u.path.js);
+  }
+  return JSON.stringify(out);
+}`;
+
+export async function setMacWallpaper(file: string) {
+  await run('/usr/bin/osascript', ['-l', 'JavaScript', '-e', SET_JXA, file], { timeout: 15_000 });
+}
+
+/** The wallpaper file currently shown on each screen (macOS). */
+export async function getMacWallpapers(): Promise<string[]> {
+  const { stdout } = await run('/usr/bin/osascript', ['-l', 'JavaScript', '-e', GET_JXA], { timeout: 15_000 });
+  return JSON.parse(stdout.trim());
 }

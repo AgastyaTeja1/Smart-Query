@@ -49,7 +49,8 @@ ${body}
 </div></body></html>`;
 }
 
-export function licenseEmail(opts: { key: string; seats: number; publicUrl: string; support: string }): Omit<Mail, 'to'> {
+export function licenseEmail(opts: { key: string; seats: number; publicUrl: string; support: string; windows?: boolean }): Omit<Mail, 'to'> {
+  const device = opts.windows ? 'Mac or PC' : 'Mac';
   const computers = opts.seats === 1 ? '1 computer' : `up to ${opts.seats} computers`;
   const text = `Thanks for buying Driftsky.
 
@@ -57,9 +58,9 @@ Your Driftsky license key:
 
     ${opts.key}
 
-It works on ${computers}, Mac or PC.
+It works on ${computers}, ${device}.
 
-1. Download Driftsky: ${opts.publicUrl}/download (Mac) or ${opts.publicUrl}/download/windows (Windows)
+1. Download Driftsky: ${opts.publicUrl}/download${opts.windows ? ` (Mac) or ${opts.publicUrl}/download/windows (Windows)` : ''}
 2. Open it and paste the key above.
 3. Pick the weather.
 
@@ -68,10 +69,10 @@ Moving to a new computer? Remove the key in the app on the old one first, then p
 Questions? Just reply, or write to ${opts.support}.`;
   const html = layout(
     'Your Driftsky license key',
-    `<p style="margin:0 0 16px;line-height:1.5">Thanks for buying Driftsky. Here’s your key. It works on ${computers}, Mac or PC.</p>
+    `<p style="margin:0 0 16px;line-height:1.5">Thanks for buying Driftsky. Here’s your key. It works on ${computers}, ${device}.</p>
 <div style="font-family:ui-monospace,Menlo,monospace;font-size:18px;letter-spacing:1px;background:#f5f5f7;border-radius:10px;padding:16px;text-align:center;user-select:all">${esc(opts.key)}</div>
 <ol style="line-height:1.7;padding-left:20px;margin:20px 0 0">
-<li>Download Driftsky for <a href="${esc(opts.publicUrl)}/download">Mac</a> or <a href="${esc(opts.publicUrl)}/download/windows">Windows</a>.</li>
+<li>${opts.windows ? `Download Driftsky for <a href="${esc(opts.publicUrl)}/download">Mac</a> or <a href="${esc(opts.publicUrl)}/download/windows">Windows</a>.` : `<a href="${esc(opts.publicUrl)}/download">Download Driftsky</a> for your Mac.`}</li>
 <li>Open it and paste the key above.</li>
 <li>Pick the weather.</li>
 </ol>
@@ -84,7 +85,7 @@ export function upgradeEmail(opts: { key: string; support: string }): Omit<Mail,
   const text = `Your Driftsky key now works on up to 5 computers:\n\n    ${opts.key}\n\nNothing to do on computers that already have it. Questions? ${opts.support}`;
   const html = layout(
     'Your key now covers 5 computers',
-    `<p style="line-height:1.5;margin:0 0 16px">Same key, more room. Paste it on up to 5 Macs or PCs.</p><div style="font-family:ui-monospace,Menlo,monospace;font-size:18px;background:#f5f5f7;border-radius:10px;padding:16px;text-align:center">${esc(opts.key)}</div>`,
+    `<p style="line-height:1.5;margin:0 0 16px">Same key, more room. Paste it on up to 5 computers.</p><div style="font-family:ui-monospace,Menlo,monospace;font-size:18px;background:#f5f5f7;border-radius:10px;padding:16px;text-align:center">${esc(opts.key)}</div>`,
   );
   return { subject: 'Your Driftsky key now covers 5 computers', text, html };
 }

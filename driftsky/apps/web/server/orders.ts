@@ -27,7 +27,7 @@ export class Orders {
     private licenses: LicenseService,
     private mailer: Mailer,
     private payments: PaymentProvider,
-    private cfg: Pick<Config, 'PUBLIC_URL' | 'SUPPORT_EMAIL'>,
+    private cfg: Pick<Config, 'PUBLIC_URL' | 'SUPPORT_EMAIL' | 'WINDOWS_ENABLED'>,
   ) {}
 
   recordSession(id: string, plan: PlanId, provider: string, upgradeLicenseId?: number, email?: string) {
@@ -63,7 +63,7 @@ export class Orders {
       const r = this.licenses.issue({ email, plan, sessionId: p.sessionId, paymentIntent: p.paymentIntent });
       license = r.license;
       if (r.created)
-        await this.mail(email, licenseEmail({ key: license.key, seats: license.seats, publicUrl: this.cfg.PUBLIC_URL, support: this.cfg.SUPPORT_EMAIL }));
+        await this.mail(email, licenseEmail({ key: license.key, seats: license.seats, publicUrl: this.cfg.PUBLIC_URL, support: this.cfg.SUPPORT_EMAIL, windows: this.cfg.WINDOWS_ENABLED }));
     }
     this.recordSession(p.sessionId, plan, this.payments.name);
     this.db.prepare("UPDATE checkout_sessions SET status = 'paid', email = ?, license_id = ? WHERE id = ?").run(email, license?.id ?? null, p.sessionId);
