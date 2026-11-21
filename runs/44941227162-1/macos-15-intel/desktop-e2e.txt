@@ -1,0 +1,43 @@
+[WebServer] [warning] ALLOW_MOCK_PAYMENTS is on: test checkout and /dev/outbox (every email, including keys) are public. Use only for staging.
+
+Running 12 tests using 1 worker
+
+  ✓   1 e2e/app.spec.ts:89:5 › first run: onboarding, activation, choosing weather, and the overlay (6.2s)
+  ✓   2 e2e/app.spec.ts:148:5 › snow piles on windows and flies off when a window is dragged (9.4s)
+  ✓   3 e2e/app.spec.ts:177:5 › battery saver, pauses and full-screen apps (5.1s)
+  ✓   4 e2e/app.spec.ts:232:5 › wallpapers, effects menu, amount, behind windows, and settings survive a restart (8.2s)
+  ✓   5 e2e/app.spec.ts:301:5 › license tab: details, seat limits, removing and moving a key (3.5s)
+  ✓   6 e2e/app.spec.ts:342:5 › a key removed or revoked elsewhere stops the weather and says why (3.1s)
+  ✓   7 e2e/app.spec.ts:370:5 › try it for a minute, once (5.9s)
+  ✓   8 e2e/app.spec.ts:391:5 › updates: up to date, then a verified download of a new version, and a tampered one (2.7s)
+  ✓   9 e2e/app.spec.ts:436:5 › the settings window is locked down (2.6s)
+
+  ✘  10 e2e/mac.spec.ts:100:5 › real windows: CoreGraphics sees them, snow piles on them and flies off when they move (33.1s)
+
+  ✓  11 e2e/mac.spec.ts:180:5 › wallpaper is really set on every screen, without a permission prompt (5.5s)
+  ✓  12 e2e/mac.spec.ts:203:5 › Low Power Mode and the Dock (3.4s)
+
+
+  1) e2e/mac.spec.ts:100:5 › real windows: CoreGraphics sees them, snow piles on them and flies off when they move 
+
+    Error: expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 45
+    Received:    30
+
+      171 |     const sorted = [...fps].sort((a, b) => a - b);
+      172 |     // smooth for its target: the median frame rate within 25% of it
+    > 173 |     expect(sorted[Math.floor(sorted.length / 2)]).toBeGreaterThanOrEqual(target * 0.75);
+          |                                                   ^
+      174 |   } finally {
+      175 |     await app.close();
+      176 |     helper.stop();
+        at /Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop/e2e/mac.spec.ts:173:51
+
+    Error Context: test-results/mac-real-windows-CoreGraph-5da15-nd-flies-off-when-they-move/error-context.md
+
+    Error Context: test-results/mac-real-windows-CoreGraph-5da15-nd-flies-off-when-they-move/error-context.md
+
+  1 failed
+    e2e/mac.spec.ts:100:5 › real windows: CoreGraphics sees them, snow piles on them and flies off when they move 
+  11 passed (1.5m)
