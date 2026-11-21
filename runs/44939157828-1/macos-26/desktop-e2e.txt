@@ -1,0 +1,107 @@
+[WebServer] [warning] ALLOW_MOCK_PAYMENTS is on: test checkout and /dev/outbox (every email, including keys) are public. Use only for staging.
+
+Running 12 tests using 1 worker
+
+  ✘   1 e2e/app.spec.ts:79:5 › first run: onboarding, activation, choosing weather, and the overlay (5.7s)
+  ✘   2 e2e/app.spec.ts:137:5 › snow piles on windows and flies off when a window is dragged (29.7s)
+  ✘   3 e2e/app.spec.ts:165:5 › battery saver, pauses and full-screen apps (18.0s)
+  ✘   4 e2e/app.spec.ts:212:5 › wallpapers, effects menu, amount, behind windows, and settings survive a restart (18.5s)
+  ✓   5 e2e/app.spec.ts:281:5 › license tab: details, seat limits, removing and moving a key (4.0s)
+  ✓   6 e2e/app.spec.ts:322:5 › a key removed or revoked elsewhere stops the weather and says why (3.4s)
+  ✓   7 e2e/app.spec.ts:350:5 › try it for a minute, once (5.0s)
+  ✓   8 e2e/app.spec.ts:371:5 › updates: up to date, then a verified download of a new version, and a tampered one (3.1s)
+  ✓   9 e2e/app.spec.ts:416:5 › the settings window is locked down (2.7s)
+
+  ✓  10 e2e/mac.spec.ts:100:5 › real windows: CoreGraphics sees them, snow piles on them and flies off when they move (22.1s)
+
+  ✓  11 e2e/mac.spec.ts:170:5 › wallpaper is really set on every screen, without a permission prompt (4.9s)
+  ✓  12 e2e/mac.spec.ts:192:5 › Low Power Mode and the Dock (4.0s)
+
+
+  1) e2e/app.spec.ts:79:5 › first run: onboarding, activation, choosing weather, and the overlay ───
+
+    Error: expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 1439
+    Received:    1024
+
+      90 |     // covers the whole display (X11 without a window manager reports 1px less; Mac/Windows are exact)
+      91 |     expect(ov.bounds).toMatchObject({ x: 0, y: 0 });
+    > 92 |     expect(ov.bounds.width).toBeGreaterThanOrEqual(1439);
+         |                             ^
+      93 |     expect(ov.bounds.height).toBeGreaterThanOrEqual(899);
+      94 |     expect(ov).toMatchObject({ visible: true, focusable: false, alwaysOnTop: true });
+      95 |     // nothing falls before a key
+        at /Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop/e2e/app.spec.ts:92:29
+
+    Error Context: test-results/app-first-run-onboarding-a-58f1b-ing-weather-and-the-overlay/error-context.md
+
+  2) e2e/app.spec.ts:137:5 › snow piles on windows and flies off when a window is dragged ──────────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 2
+
+    Call Log:
+    - Timeout 15000ms exceeded while waiting on the predicate
+
+      157 |     // closing the window drops what's left
+      158 |     writeWindows(ctx, []);
+    > 159 |     await expect.poll(async () => (await overlayStats(ctx.app)).surfaces).toBe(1);
+          |                                                                           ^
+      160 |   } finally {
+      161 |     await ctx.app.close();
+      162 |   }
+        at /Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop/e2e/app.spec.ts:159:75
+
+    Error Context: test-results/app-snow-piles-on-windows--99245-ff-when-a-window-is-dragged/error-context.md
+
+  3) e2e/app.spec.ts:165:5 › battery saver, pauses and full-screen apps ────────────────────────────
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 150
+    Received:   140
+
+    Call Log:
+    - Timeout 15000ms exceeded while waiting on the predicate
+
+      173 |     await page.getByRole('button', { name: 'Done' }).click();
+      174 |     await hooks(ctx.app, 'runMenu', 'effect-snow');
+    > 175 |     await expect.poll(async () => (await overlayStats(ctx.app)).particles, { timeout: 15_000 }).toBeGreaterThan(150);
+          |                                                                                                 ^
+      176 |     await hooks(ctx.app, 'setBattery', true);
+      177 |     await expect.poll(async () => (await overlayStats(ctx.app)).config.lowPower).toBe(true);
+      178 |     await expect.poll(async () => (await overlayStats(ctx.app)).particles).toBeLessThan(150);
+        at /Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop/e2e/app.spec.ts:175:97
+
+    Error Context: test-results/app-battery-saver-pauses-and-full-screen-apps/error-context.md
+
+  4) e2e/app.spec.ts:212:5 › wallpapers, effects menu, amount, behind windows, and settings survive a restart 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 2
+
+    Call Log:
+    - Timeout 15000ms exceeded while waiting on the predicate
+
+      248 |       await page.getByRole('switch', { name: /Behind windows/ }).click();
+      249 |       await expect.poll(async () => (await hooks<any[]>(ctx.app, 'overlays'))[0]?.alwaysOnTop).toBe(false);
+    > 250 |       await expect.poll(async () => (await overlayStats(ctx.app))?.surfaces).toBe(1); // only the bottom of the screen
+          |                                                                              ^
+      251 |       await page.getByRole('switch', { name: /Behind windows/ }).click();
+      252 |       await expect.poll(async () => (await hooks<any[]>(ctx.app, 'overlays'))[0]?.alwaysOnTop).toBe(true);
+      253 |     } else {
+        at /Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop/e2e/app.spec.ts:250:78
+
+    Error Context: test-results/app-wallpapers-effects-men-a8778--settings-survive-a-restart/error-context.md
+
+  4 failed
+    e2e/app.spec.ts:79:5 › first run: onboarding, activation, choosing weather, and the overlay ────
+    e2e/app.spec.ts:137:5 › snow piles on windows and flies off when a window is dragged ───────────
+    e2e/app.spec.ts:165:5 › battery saver, pauses and full-screen apps ─────────────────────────────
+    e2e/app.spec.ts:212:5 › wallpapers, effects menu, amount, behind windows, and settings survive a restart 
+  8 passed (2.1m)
