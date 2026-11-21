@@ -1,0 +1,10 @@
+Executable=/Applications/Driftsky.app/Contents/MacOS/Driftsky
+Identifier=app.driftsky.desktop
+Format=app bundle with Mach-O universal (x86_64 arm64)
+CodeDirectory v=20500 size=437 flags=0x10002(adhoc,runtime) hashes=3+7 location=embedded
+Signature=adhoc
+Info.plist entries=33
+TeamIdentifier=not set
+Runtime Version=26.0.0
+Sealed Resources version=2 rules=13 files=350
+Internal requirements count=0 size=12
