@@ -1,0 +1,93 @@
+
+> driftsky@1.0.0 test
+> npm run test -w @driftsky/engine && npm run test -w @driftsky/web && npm run test -w @driftsky/desktop
+
+
+> @driftsky/engine@1.0.0 test
+> vitest run
+
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90m/Users/runner/work/Smart-Query/Smart-Query/driftsky/packages/engine[39m
+
+ [32m✓[39m test/core.test.ts [2m([22m[2m12 tests[22m[2m)[22m[90m 291[2mms[22m[39m
+ [32m✓[39m test/effects.test.ts [2m([22m[2m29 tests[22m[2m)[22m[33m 1483[2mms[22m[39m
+   [33m[2m✓[22m[39m Snow[2m > [22mpiles up on a window top, the Dock and the ground [33m370[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m41 passed[39m[22m[90m (41)[39m
+[2m   Start at [22m 19:06:43
+[2m   Duration [22m 2.03s[2m (transform 226ms, setup 0ms, collect 446ms, tests 1.77s, environment 0ms, prepare 173ms)[22m
+
+
+> @driftsky/web@1.0.0 test
+> vitest run
+
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90m/Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/web[39m
+
+(node:5677) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+[90mstderr[2m | test/server.test.ts[2m > [22m[2mstripe webhook[2m > [22m[2macknowledges events that can never work, instead of letting Stripe retry for days
+[22m[39m[webhook] ignoring unusable event evt_bad checkout.session.completed no email on session cs_test_7
+
+[90mstderr[2m | test/server.test.ts[2m > [22m[2mreleases & downloads[2m > [22m[2mignores a malformed releases file, keeping the last good one
+[22m[39m[releases] ignoring invalid /var/folders/9d/l02zfgrs7c16twd3wbpdmhkc0000gn/T/ds-tYXxcS/releases.json [
+  {
+    "validation": "regex",
+    "code": "invalid_string",
+    "message": "Invalid",
+    "path": [
+      "mac",
+      "latest"
+    ]
+  },
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "mac",
+      "url"
+    ],
+    "message": "Required"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "mac",
+      "sha256"
+    ],
+    "message": "Required"
+  }
+]
+
+[90mstderr[2m | test/server.test.ts[2m > [22m[2mreleases & downloads[2m > [22m[2mignores a malformed releases file, keeping the last good one
+[22m[39m[releases] ignoring invalid /var/folders/9d/l02zfgrs7c16twd3wbpdmhkc0000gn/T/ds-tYXxcS/releases.json Unterminated string in JSON at position 13 (line 1 column 14)
+
+[90mstderr[2m | test/server.test.ts[2m > [22m[2mreview fixes[2m > [22m[2mprototype names are not plans
+[22m[39m[webhook] ignoring unusable event evt_p checkout.session.completed unknown plan for session cs_test_p
+
+ [32m✓[39m test/server.test.ts [2m([22m[2m45 tests[22m[2m)[22m[33m 448[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m45 passed[39m[22m[90m (45)[39m
+[2m   Start at [22m 19:06:45
+[2m   Duration [22m 1.02s[2m (transform 126ms, setup 0ms, collect 381ms, tests 448ms, environment 0ms, prepare 35ms)[22m
+
+
+> @driftsky/desktop@1.0.0 test
+> vitest run
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90m/Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop[39m
+
+ [32m✓[39m test/main.test.ts [2m([22m[2m33 tests[22m[2m)[22m[33m 308[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m33 passed[39m[22m[90m (33)[39m
+[2m   Start at [22m 19:06:47
+[2m   Duration [22m 689ms[2m (transform 151ms, setup 0ms, collect 198ms, tests 308ms, environment 0ms, prepare 45ms)[22m
+
