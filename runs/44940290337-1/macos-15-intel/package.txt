@@ -1,0 +1,25 @@
+  • electron-builder  version=25.1.8 os=24.6.0
+  • loaded configuration  file=/Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop/electron-builder.yml
+  • executing @electron/rebuild  electronVersion=38.2.2 arch=x64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=darwin arch=x64 electron=38.2.2 appOutDir=release/mac-universal-x64-temp
+  • downloading     url=https://github.com/electron/electron/releases/download/v38.2.2/electron-v38.2.2-darwin-x64.zip size=113 MB parts=8
+  • downloaded      url=https://github.com/electron/electron/releases/download/v38.2.2/electron-v38.2.2-darwin-x64.zip duration=1.377s
+  • fuses applied  Driftsky.app
+  • executing @electron/rebuild  electronVersion=38.2.2 arch=arm64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=arm64
+  • completed installing native dependencies
+  • packaging       platform=darwin arch=arm64 electron=38.2.2 appOutDir=release/mac-universal-arm64-temp
+  • downloading     url=https://github.com/electron/electron/releases/download/v38.2.2/electron-v38.2.2-darwin-arm64.zip size=112 MB parts=8
+  • downloaded      url=https://github.com/electron/electron/releases/download/v38.2.2/electron-v38.2.2-darwin-arm64.zip duration=930ms
+  • fuses applied  Driftsky.app
+  • packaging       platform=darwin arch=universal electron=38.2.2 appOutDir=release/mac-universal
+  • fuses applied  Driftsky.app
+  • skipped macOS application code signing  reason=Identity name is specified, but no valid identity with this name in the keychain identity=- allIdentities=     0 identities found
+                                                Valid identities only
+     0 valid identities found
+  • building        target=DMG arch=universal file=release/Driftsky-1.0.0-universal.dmg
+  • building        target=macOS zip arch=universal file=release/Driftsky-1.0.0-universal-mac.zip
+  • building block map  blockMapFile=release/Driftsky-1.0.0-universal.dmg.blockmap
+  • building block map  blockMapFile=release/Driftsky-1.0.0-universal-mac.zip.blockmap
