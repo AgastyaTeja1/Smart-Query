@@ -21,7 +21,9 @@ exports.default = async function afterPack(context) {
     // step signs the merged app once (Developer ID, or ad hoc with identity "-")
     resetAdHocDarwinSignature: false,
     [FuseV1Options.RunAsNode]: false,
-    [FuseV1Options.EnableCookieEncryption]: true,
+    // no cookie encryption: Driftsky keeps no cookies or logins, and turning it on makes macOS ask
+    // for the keychain password on first launch ("wants to use … Driftsky Safe Storage")
+    [FuseV1Options.EnableCookieEncryption]: false,
     [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
     [FuseV1Options.EnableNodeCliInspectArguments]: false,
     [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
