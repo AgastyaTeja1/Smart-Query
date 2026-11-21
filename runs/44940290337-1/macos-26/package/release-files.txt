@@ -1,0 +1,10 @@
+total 854896
+drwxr-xr-x   9 runner  staff        288 Nov 21 19:24 .
+drwxr-xr-x  18 runner  staff        576 Nov 21 19:22 ..
+drwxr-xr-x   3 runner  staff         96 Nov 21 19:22 .icon-icns
+-rw-r--r--   1 runner  staff       1696 Nov 21 19:24 builder-debug.yml
+-rw-r--r--   1 runner  staff  205713817 Nov 21 19:24 Driftsky-1.0.0-universal-mac.zip
+-rw-r--r--   1 runner  staff     213332 Nov 21 19:24 Driftsky-1.0.0-universal-mac.zip.blockmap
+-rw-r--r--@  1 runner  staff  213002458 Nov 21 19:23 Driftsky-1.0.0-universal.dmg
+-rw-r--r--   1 runner  staff     222647 Nov 21 19:23 Driftsky-1.0.0-universal.dmg.blockmap
+drwxr-xr-x   3 runner  staff         96 Nov 21 19:23 mac-universal

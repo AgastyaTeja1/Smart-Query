@@ -1,0 +1,2 @@
+/Applications/Driftsky.app: rejected
+source=no usable signature

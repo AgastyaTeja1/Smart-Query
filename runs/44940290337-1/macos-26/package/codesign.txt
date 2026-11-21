@@ -1,0 +1,10 @@
+Executable=/Applications/Driftsky.app/Contents/MacOS/Driftsky
+Identifier=Electron
+Format=app bundle with Mach-O universal (x86_64 arm64)
+CodeDirectory v=20400 size=392 flags=0x20002(adhoc,linker-signed) hashes=9+0 location=embedded
+Signature=adhoc
+Info.plist=not bound
+TeamIdentifier=not set
+Sealed Resources=none
+Internal requirements=none
+/Applications/Driftsky.app: code object is not signed at all
