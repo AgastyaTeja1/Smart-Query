@@ -1,8 +1,8 @@
 // electron-builder afterPack hook: harden the Electron binary with fuses before signing.
 // - no running as plain Node (ELECTRON_RUN_AS_NODE), no NODE_OPTIONS, no --inspect
 // - load app code only from the asar archive, and check its integrity
-// On macOS the binary is re-signed ad hoc afterwards so unsigned builds still launch on Apple
-// silicon; a Developer ID signature replaces that during signing.
+// On macOS the signing step that follows signs the whole app (with a Developer ID, or ad hoc for
+// test builds), which seals the flipped fuses.
 const path = require('node:path');
 const { flipFuses, FuseVersion, FuseV1Options } = require('@electron/fuses');
 
@@ -17,7 +17,9 @@ exports.default = async function afterPack(context) {
         : path.join(appOutDir, packager.executableName);
   await flipFuses(target, {
     version: FuseVersion.V1,
-    resetAdHocDarwinSignature: electronPlatformName === 'darwin',
+    // no re-signing here: universal builds merge the two architectures first, then the signing
+    // step signs the merged app once (Developer ID, or ad hoc with identity "-")
+    resetAdHocDarwinSignature: false,
     [FuseV1Options.RunAsNode]: false,
     [FuseV1Options.EnableCookieEncryption]: true,
     [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
