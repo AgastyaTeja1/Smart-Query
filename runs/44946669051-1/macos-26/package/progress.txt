@@ -1,0 +1,5 @@
+[20:51:24] mount
+[20:51:43] self-test native
+[20:51:43] rosetta
+[20:51:44] self-test x86_64
+[20:53:45] first launch

@@ -1,0 +1,1 @@
+scripts/verify-mac-package.sh: line 11: 44531 Alarm clock: 14         perl -e 'alarm shift; exec @ARGV or die "exec: $!"' "$s" "$@"
