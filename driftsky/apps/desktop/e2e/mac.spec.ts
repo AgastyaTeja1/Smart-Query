@@ -12,7 +12,22 @@ test.skip(process.platform !== 'darwin', 'macOS only');
 const API = `http://localhost:${WEB_PORT}`;
 const ELECTRON = path.resolve(__dirname, '../../../node_modules/.bin/electron');
 const SHOTS = process.env.MAC_RESULTS || path.join(TMP, 'mac-results');
-const report: Record<string, unknown> = {};
+const REPORT = path.join(SHOTS, 'mac-e2e-report.json');
+/** Merged into the file as we go: Playwright starts a fresh worker after a failure. */
+const report = new Proxy({} as Record<string, unknown>, {
+  set(_t, k: string, v) {
+    fs.mkdirSync(SHOTS, { recursive: true });
+    let cur: Record<string, unknown> = {};
+    try {
+      cur = JSON.parse(fs.readFileSync(REPORT, 'utf8'));
+    } catch {
+      /* first write */
+    }
+    cur[k] = v;
+    fs.writeFileSync(REPORT, JSON.stringify(cur, null, 2));
+    return true;
+  },
+});
 
 function screenshot(name: string) {
   fs.mkdirSync(SHOTS, { recursive: true });
@@ -92,10 +107,6 @@ async function buyAndActivate(app: ElectronApplication, request: APIRequestConte
   return page;
 }
 
-test.afterAll(() => {
-  fs.mkdirSync(SHOTS, { recursive: true });
-  fs.writeFileSync(path.join(SHOTS, 'mac-e2e-report.json'), JSON.stringify(report, null, 2));
-});
 
 test('real windows: CoreGraphics sees them, snow piles on them and flies off when they move', async ({ request }) => {
   const dir = fs.mkdtempSync(path.join(TMP, 'mac-'));
@@ -165,9 +176,20 @@ test('real windows: CoreGraphics sees them, snow piles on them and flies off whe
     }
     const metrics = await app.evaluate(({ app }) => app.getAppMetrics().map((m) => ({ type: m.type, cpu: m.cpu.percentCPUUsage, memMB: Math.round(m.memory.workingSetSize / 1024) })));
     const st = await stats(app);
-    const target = st.config.lowPower ? 30 : 60; // battery saver / Low Power Mode caps at 30
+    // what this display can show at all: an empty window's frame rate on the same machine
+    const baseline = await app.evaluate(async ({ BrowserWindow }) => {
+      const w = new BrowserWindow({ width: 300, height: 200, show: true, focusable: false });
+      await w.loadURL('about:blank');
+      const n = await w.webContents.executeJavaScript(
+        'new Promise(r => { let n = 0; const t0 = performance.now(); const f = () => { n++; performance.now() - t0 < 2000 ? requestAnimationFrame(f) : r(n / 2); }; requestAnimationFrame(f); })',
+      );
+      w.destroy();
+      return Math.round(n);
+    });
+    const cap = st.config.lowPower ? 30 : 60; // battery saver / Low Power Mode caps at 30
+    const target = Math.min(cap, baseline);
     const power = await hook<any>(app, 'state');
-    report.performance = { fps, quality, metrics, target, lowPowerMode: power.lowPowerMode, onBattery: power.onBattery };
+    report.performance = { fps, quality, metrics, baseline, target, lowPowerMode: power.lowPowerMode, onBattery: power.onBattery };
     const sorted = [...fps].sort((a, b) => a - b);
     // smooth for its target: the median frame rate within 25% of it
     expect(sorted[Math.floor(sorted.length / 2)]).toBeGreaterThanOrEqual(target * 0.75);
