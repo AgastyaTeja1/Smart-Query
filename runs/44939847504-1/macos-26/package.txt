@@ -1,0 +1,26 @@
+  • electron-builder  version=25.1.8 os=25.6.0
+  • loaded configuration  file=/Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop/electron-builder.yml
+  • executing @electron/rebuild  electronVersion=38.2.2 arch=x64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=darwin arch=x64 electron=38.2.2 appOutDir=release/mac-universal-x64-temp
+  • downloading     url=https://github.com/electron/electron/releases/download/v38.2.2/electron-v38.2.2-darwin-x64.zip size=113 MB parts=6
+  • downloaded      url=https://github.com/electron/electron/releases/download/v38.2.2/electron-v38.2.2-darwin-x64.zip duration=1.193s
+  • fuses applied  Driftsky.app
+  • executing @electron/rebuild  electronVersion=38.2.2 arch=arm64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=arm64
+  • completed installing native dependencies
+  • packaging       platform=darwin arch=arm64 electron=38.2.2 appOutDir=release/mac-universal-arm64-temp
+  • downloading     url=https://github.com/electron/electron/releases/download/v38.2.2/electron-v38.2.2-darwin-arm64.zip size=112 MB parts=6
+  • downloaded      url=https://github.com/electron/electron/releases/download/v38.2.2/electron-v38.2.2-darwin-arm64.zip duration=679ms
+  • fuses applied  Driftsky.app
+  • packaging       platform=darwin arch=universal electron=38.2.2 appOutDir=release/mac-universal
+  ⨯ Expected all non-binary files to have identical SHAs when creating a universal build but "Contents/Frameworks/Electron Framework.framework/Versions/A/_CodeSignature/CodeResources" did not  failedTask=build stackTrace=Error: Expected all non-binary files to have identical SHAs when creating a universal build but "Contents/Frameworks/Electron Framework.framework/Versions/A/_CodeSignature/CodeResources" did not
+    at makeUniversalApp (/Users/runner/work/Smart-Query/Smart-Query/driftsky/node_modules/@electron/universal/src/index.ts:131:15)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at MacPackager.doPack (/Users/runner/work/Smart-Query/Smart-Query/driftsky/node_modules/app-builder-lib/src/macPackager.ts:153:9)
+    at MacPackager.pack (/Users/runner/work/Smart-Query/Smart-Query/driftsky/node_modules/app-builder-lib/src/macPackager.ts:215:9)
+    at Packager.doBuild (/Users/runner/work/Smart-Query/Smart-Query/driftsky/node_modules/app-builder-lib/src/packager.ts:459:9)
+    at executeFinally (/Users/runner/work/Smart-Query/Smart-Query/driftsky/node_modules/builder-util/src/promise.ts:12:14)
+    at Packager.build (/Users/runner/work/Smart-Query/Smart-Query/driftsky/node_modules/app-builder-lib/src/packager.ts:393:31)
+    at executeFinally (/Users/runner/work/Smart-Query/Smart-Query/driftsky/node_modules/builder-util/src/promise.ts:12:14)
