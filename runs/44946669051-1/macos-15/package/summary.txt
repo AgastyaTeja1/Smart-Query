@@ -1,0 +1,18 @@
+dmg: release/Driftsky-1.0.0-universal.dmg (208M)
+ok   DMG has the Applications shortcut
+plist CFBundleIdentifier = app.driftsky.desktop
+plist CFBundleShortVersionString = 1.0.0
+plist LSMinimumSystemVersion = 14.0
+plist LSUIElement = true
+plist NSAppleEventsUsageDescription = Driftsky uses System Events to set your wallpaper on every screen.
+main binary archs: x86_64 arm64
+ok   koffi for arm64 and x64 unpacked
+ok   code signature valid (Signature=adhoc)
+gatekeeper: /Applications/Driftsky.app: rejected (expected to reject until signed with a Developer ID and notarized)
+fuses: 4 disabled / 4 enabled
+523M	/Applications/Driftsky.app
+self-test (arm64): exit 0
+self-test (x86_64 under Rosetta): exit 142
+ok   app running after launch (       5 processes)
+ok   quits cleanly
+package verification: FAILED

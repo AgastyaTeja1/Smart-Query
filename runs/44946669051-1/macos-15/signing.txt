@@ -1,0 +1,1 @@
+signing: ad hoc, notarize: false
