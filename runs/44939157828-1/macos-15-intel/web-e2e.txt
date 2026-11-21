@@ -1,0 +1,43 @@
+[WebServer] 
+[WebServer]   dist/server.js  49.4kb
+[WebServer] 
+[WebServer] ⚡ Done in 6ms
+[WebServer] [warning] ALLOW_MOCK_PAYMENTS is on: test checkout and /dev/outbox (every email, including keys) are public. Use only for staging.
+
+Running 32 tests using 1 worker
+
+  ✓   1 [desktop] › e2e/site.spec.ts:41:1 › home page renders every section with no errors and no sideways scroll (607ms)
+  ✓   2 [desktop] › e2e/site.spec.ts:58:1 › header navigation scrolls to each section (2.3s)
+  ✓   3 [desktop] › e2e/site.spec.ts:76:1 › the hero demo has snow piled up, and dragging the window throws it off (1.2s)
+  ✓   4 [desktop] › e2e/site.spec.ts:110:1 › every effect card runs its own weather (3.1s)
+  ✓   5 [desktop] › e2e/site.spec.ts:125:1 › fireflies come to a resting pointer; leaves fly from a sweeping one (5.4s)
+  ✓   6 [desktop] › e2e/site.spec.ts:148:1 › FAQ answers open and close independently, with accessible state (881ms)
+  ✓   7 [desktop] › e2e/site.spec.ts:169:1 › wallpaper preview opens full size and closes with Escape (522ms)
+  ✓   8 [desktop] › e2e/site.spec.ts:191:1 › cookie choice is remembered and can be changed (4.6s)
+  ✓   9 [desktop] › e2e/site.spec.ts:207:1 › buying a key end to end: checkout → thank-you page → email → activation (1.1s)
+  ✓  10 [desktop] › e2e/site.spec.ts:236:1 › cheaper plan and leaving checkout without paying (906ms)
+  ✓  11 [desktop] › e2e/site.spec.ts:252:1 › thank-you page handles a missing or unknown order (324ms)
+  ✓  12 [desktop] › e2e/site.spec.ts:261:1 › lost key form (329ms)
+  ✓  13 [desktop] › e2e/site.spec.ts:269:1 › download buttons: friendly page before a release, redirect after (495ms)
+  ✓  14 [desktop] › e2e/site.spec.ts:294:1 › legal pages, client navigation, and a real 404 (959ms)
+  ✓  15 [desktop] › e2e/site.spec.ts:317:1 › production security headers are present (87ms)
+  ✓  16 [desktop] › e2e/site.spec.ts:327:3 › reduced motion › still shows a settled scene, without animating (1.2s)
+  ✓  17 [mobile] › e2e/site.spec.ts:41:1 › home page renders every section with no errors and no sideways scroll (418ms)
+  -  18 [mobile] › e2e/site.spec.ts:58:1 › header navigation scrolls to each section
+  ✓  19 [mobile] › e2e/site.spec.ts:76:1 › the hero demo has snow piled up, and dragging the window throws it off (2.2s)
+  ✓  20 [mobile] › e2e/site.spec.ts:110:1 › every effect card runs its own weather (2.7s)
+  -  21 [mobile] › e2e/site.spec.ts:125:1 › fireflies come to a resting pointer; leaves fly from a sweeping one
+  ✓  22 [mobile] › e2e/site.spec.ts:148:1 › FAQ answers open and close independently, with accessible state (906ms)
+  ✓  23 [mobile] › e2e/site.spec.ts:169:1 › wallpaper preview opens full size and closes with Escape (425ms)
+  ✓  24 [mobile] › e2e/site.spec.ts:191:1 › cookie choice is remembered and can be changed (4.0s)
+  ✓  25 [mobile] › e2e/site.spec.ts:207:1 › buying a key end to end: checkout → thank-you page → email → activation (694ms)
+  ✓  26 [mobile] › e2e/site.spec.ts:236:1 › cheaper plan and leaving checkout without paying (908ms)
+  ✓  27 [mobile] › e2e/site.spec.ts:252:1 › thank-you page handles a missing or unknown order (297ms)
+  ✓  28 [mobile] › e2e/site.spec.ts:261:1 › lost key form (326ms)
+  ✓  29 [mobile] › e2e/site.spec.ts:269:1 › download buttons: friendly page before a release, redirect after (555ms)
+  ✓  30 [mobile] › e2e/site.spec.ts:294:1 › legal pages, client navigation, and a real 404 (964ms)
+  ✓  31 [mobile] › e2e/site.spec.ts:317:1 › production security headers are present (87ms)
+  ✓  32 [mobile] › e2e/site.spec.ts:327:3 › reduced motion › still shows a settled scene, without animating (1.2s)
+
+  2 skipped
+  30 passed (45.1s)
