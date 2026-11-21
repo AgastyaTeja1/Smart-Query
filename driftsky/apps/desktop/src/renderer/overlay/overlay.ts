@@ -1,4 +1,4 @@
-import { FrameLoop, WeatherEngine, type Ctx2D } from '@driftsky/engine';
+import { FrameLoop, QualityGovernor, WeatherEngine, type Ctx2D } from '@driftsky/engine';
 import type { OverlayConfig, WorldFrame } from '../../shared/types';
 
 declare global {
@@ -34,7 +34,11 @@ function fit() {
 fit();
 addEventListener('resize', fit);
 
-const loop = new FrameLoop(engine, () => ctx as unknown as Ctx2D);
+// slower Macs: thin the weather rather than let it stutter
+const governor = new QualityGovernor();
+const loop = new FrameLoop(engine, () => ctx as unknown as Ctx2D, (dt) => {
+  if (governor.update(engine.stats().fps, loop.maxFps, dt)) engine.setIntensity(config.intensity * governor.scale);
+});
 let config: OverlayConfig = { effect: 'off', intensity: 1, lowPower: false, paused: true };
 let frames = 0;
 let lastWorld = 0;
@@ -42,8 +46,11 @@ let lastWorld = 0;
 function apply(c: OverlayConfig) {
   const changedEffect = c.effect !== config.effect;
   config = c;
-  if (changedEffect) engine.setEffect(c.effect);
-  engine.setIntensity(c.intensity);
+  if (changedEffect) {
+    engine.setEffect(c.effect);
+    governor.reset();
+  }
+  engine.setIntensity(c.intensity * governor.scale);
   engine.setLowPower(c.lowPower);
   // battery: half the particles and 30 fps
   loop.maxFps = c.lowPower ? 30 : 60;
@@ -70,6 +77,7 @@ window.__overlay = {
     worldFrames: frames,
     msSinceWorld: lastWorld ? Math.round(performance.now() - lastWorld) : null,
     config,
+    quality: governor.scale,
     size: [innerWidth, innerHeight],
   }),
 };

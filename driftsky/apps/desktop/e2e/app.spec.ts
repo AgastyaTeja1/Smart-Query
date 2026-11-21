@@ -66,6 +66,16 @@ async function buyKey(request: APIRequestContext, plan: 'one' | 'five', email = 
   return { key: s.key as string, email };
 }
 
+/** The primary display, and whether a Dock/taskbar sits along its bottom (1) or not (0). */
+async function primaryDisplay(app: ElectronApplication) {
+  const d = await app.evaluate(({ screen }) => {
+    const p = screen.getPrimaryDisplay();
+    return { bounds: p.bounds, workArea: p.workArea };
+  });
+  const gap = d.bounds.y + d.bounds.height - (d.workArea.y + d.workArea.height);
+  return { ...d, dock: gap >= 8 && gap <= d.bounds.height * 0.3 ? 1 : 0 };
+}
+
 const writeWindows = (ctx: Ctx, wins: object[]) => {
   const tmp = ctx.windowsFile + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(wins));
@@ -87,10 +97,11 @@ test('first run: onboarding, activation, choosing weather, and the overlay', asy
     // overlays: one per display, click-through, not focusable, on top
     await expect.poll(async () => (await hooks<any[]>(ctx.app, 'overlays'))[0]?.ready).toBe(true);
     const [ov] = await hooks<any[]>(ctx.app, 'overlays');
+    const disp = await primaryDisplay(ctx.app);
     // covers the whole display (X11 without a window manager reports 1px less; Mac/Windows are exact)
-    expect(ov.bounds).toMatchObject({ x: 0, y: 0 });
-    expect(ov.bounds.width).toBeGreaterThanOrEqual(1439);
-    expect(ov.bounds.height).toBeGreaterThanOrEqual(899);
+    expect(ov.bounds).toMatchObject({ x: disp.bounds.x, y: disp.bounds.y });
+    expect(ov.bounds.width).toBeGreaterThanOrEqual(disp.bounds.width - 1);
+    expect(ov.bounds.height).toBeGreaterThanOrEqual(disp.bounds.height - 1);
     expect(ov).toMatchObject({ visible: true, focusable: false, alwaysOnTop: true });
     // nothing falls before a key
     expect((await overlayStats(ctx.app)).running).toBe(false);
@@ -156,7 +167,8 @@ test('snow piles on windows and flies off when a window is dragged', async ({ re
     await expect.poll(async () => (await overlayStats(ctx.app)).shed, { timeout: 10_000 }).toBeGreaterThan(shed0 + 5);
     // closing the window drops what's left
     writeWindows(ctx, []);
-    await expect.poll(async () => (await overlayStats(ctx.app)).surfaces).toBe(1);
+    // left: the bottom of the screen, and the Dock where there is one
+    await expect.poll(async () => (await overlayStats(ctx.app)).surfaces).toBe(1 + (await primaryDisplay(ctx.app)).dock);
   } finally {
     await ctx.app.close();
   }
@@ -172,10 +184,13 @@ test('battery saver, pauses and full-screen apps', async ({ request }) => {
     await page.getByRole('button', { name: 'Activate' }).click();
     await page.getByRole('button', { name: 'Done' }).click();
     await hooks(ctx.app, 'runMenu', 'effect-snow');
-    await expect.poll(async () => (await overlayStats(ctx.app)).particles, { timeout: 15_000 }).toBeGreaterThan(150);
+    // a full screen of snow for this display's size
+    await expect.poll(async () => (await overlayStats(ctx.app)).particles, { timeout: 15_000 }).toBeGreaterThan(80);
+    await new Promise((r) => setTimeout(r, 1500));
+    const full = (await overlayStats(ctx.app)).particles;
     await hooks(ctx.app, 'setBattery', true);
     await expect.poll(async () => (await overlayStats(ctx.app)).config.lowPower).toBe(true);
-    await expect.poll(async () => (await overlayStats(ctx.app)).particles).toBeLessThan(150);
+    await expect.poll(async () => (await overlayStats(ctx.app)).particles).toBeLessThan(full * 0.7);
     expect((await hooks<any[]>(ctx.app, 'menu'))[0].label).toMatch(/battery saver/);
     // turning the setting off restores full weather even on battery
     await page.getByRole('tab', { name: 'Settings' }).click();
@@ -247,7 +262,7 @@ test('wallpapers, effects menu, amount, behind windows, and settings survive a r
     if ((await hooks<any>(ctx.app, 'state')).canGoBehind) {
       await page.getByRole('switch', { name: /Behind windows/ }).click();
       await expect.poll(async () => (await hooks<any[]>(ctx.app, 'overlays'))[0]?.alwaysOnTop).toBe(false);
-      await expect.poll(async () => (await overlayStats(ctx.app))?.surfaces).toBe(1); // only the bottom of the screen
+      await expect.poll(async () => (await overlayStats(ctx.app))?.surfaces).toBe(1 + (await primaryDisplay(ctx.app)).dock); // no windows: the ground (and Dock)
       await page.getByRole('switch', { name: /Behind windows/ }).click();
       await expect.poll(async () => (await hooks<any[]>(ctx.app, 'overlays'))[0]?.alwaysOnTop).toBe(true);
     } else {

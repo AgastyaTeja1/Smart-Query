@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@driftsky/engine": "^1.0.0",
+    "@electron/fuses": "^1.8.0",
     "@fontsource-variable/inter": "^5.1.1",
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.10.2",

@@ -13,16 +13,8 @@ extraResources:
   - from: resources
     to: .
     filter: ["**/*"]
-# harden the shipped binary: no running as plain Node, no NODE_OPTIONS/--inspect, app code only from the signed asar
-electronFuses:
-  runAsNode: false
-  enableCookieEncryption: true
-  enableNodeOptionsEnvironmentVariable: false
-  enableNodeCliInspectArguments: false
-  enableEmbeddedAsarIntegrityValidation: true
-  onlyLoadAppFromAsar: true
-  # flipping fuses edits the binary: re-sign ad hoc so unsigned test builds still launch on Apple silicon
-  resetAdHocDarwinSignature: true
+# harden the shipped binary with Electron fuses (see build/after-pack.cjs)
+afterPack: build/after-pack.cjs
 asarUnpack:
   - node_modules/koffi/**
 mac:

@@ -96,7 +96,26 @@ function run() {
 }`;
 
 export async function setMacWallpaper(file: string) {
-  await run('/usr/bin/osascript', ['-l', 'JavaScript', '-e', SET_JXA, file], { timeout: 15_000 });
+  let problem: Error | null = null;
+  try {
+    await run('/usr/bin/osascript', ['-l', 'JavaScript', '-e', SET_JXA, file], { timeout: 15_000 });
+  } catch (e) {
+    problem = e as Error;
+  }
+  // the API's return value isn't reliable through the JavaScript bridge: check what's really shown
+  const target = fs.realpathSync(file);
+  const shown = await getMacWallpapers().catch(() => [] as string[]);
+  const real = (p: string) => {
+    try {
+      return fs.realpathSync(p);
+    } catch {
+      return p;
+    }
+  };
+  if (shown.length && shown.every((p) => real(p) === target)) return;
+  const detail = problem ? `${problem.message} ${(problem as { stderr?: string }).stderr ?? ''}`.trim() : `screens show ${JSON.stringify(shown)}`;
+  console.error('[wallpaper] not applied:', detail);
+  throw new Error(`wallpaper not applied: ${detail}`);
 }
 
 /** The wallpaper file currently shown on each screen (macOS). */

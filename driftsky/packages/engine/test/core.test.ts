@@ -150,3 +150,27 @@ describe('World', () => {
     expect(w.pointer).toBeNull();
   });
 });
+
+describe('QualityGovernor', () => {
+  it('thins particles when frames are slow, never below the floor, and restores them when smooth', async () => {
+    const { QualityGovernor } = await import('../src');
+    const g = new QualityGovernor(0.4, 2, 8);
+    expect(g.update(30, 60, 1.9)).toBe(false); // not slow long enough yet
+    expect(g.update(30, 60, 0.2)).toBe(true);
+    expect(g.scale).toBe(0.8);
+    for (let i = 0; i < 50; i++) g.update(20, 60, 1);
+    expect(g.scale).toBe(0.4);
+    expect(g.update(59, 60, 7)).toBe(false);
+    expect(g.update(59, 60, 1)).toBe(true);
+    expect(g.scale).toBeGreaterThan(0.4);
+    for (let i = 0; i < 200; i++) g.update(60, 60, 1);
+    expect(g.scale).toBe(1);
+    // a 30 fps target (battery) is judged against 30, not 60
+    const b = new QualityGovernor();
+    for (let i = 0; i < 10; i++) b.update(30, 30, 1);
+    expect(b.scale).toBe(1);
+    // nonsense input is ignored
+    expect(b.update(NaN, 60, 1)).toBe(false);
+    expect(b.update(10, 60, -1)).toBe(false);
+  });
+});

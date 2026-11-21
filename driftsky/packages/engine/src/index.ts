@@ -11,3 +11,4 @@ export { Starfall } from './effects/starfall';
 export { SHED_SPEED } from './effects/base';
 export { EFFECT_INFO, WALLPAPERS, type WallpaperId } from './catalog';
 export { FrameLoop } from './loop';
+export { QualityGovernor } from './governor';
