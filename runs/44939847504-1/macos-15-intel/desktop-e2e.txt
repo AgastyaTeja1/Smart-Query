@@ -1,0 +1,65 @@
+[WebServer] [warning] ALLOW_MOCK_PAYMENTS is on: test checkout and /dev/outbox (every email, including keys) are public. Use only for staging.
+
+Running 12 tests using 1 worker
+
+  ✓   1 e2e/app.spec.ts:89:5 › first run: onboarding, activation, choosing weather, and the overlay (9.8s)
+  ✓   2 e2e/app.spec.ts:148:5 › snow piles on windows and flies off when a window is dragged (8.7s)
+  ✘   3 e2e/app.spec.ts:177:5 › battery saver, pauses and full-screen apps (19.7s)
+  ✓   4 e2e/app.spec.ts:227:5 › wallpapers, effects menu, amount, behind windows, and settings survive a restart (9.2s)
+  ✓   5 e2e/app.spec.ts:296:5 › license tab: details, seat limits, removing and moving a key (4.7s)
+  ✓   6 e2e/app.spec.ts:337:5 › a key removed or revoked elsewhere stops the weather and says why (3.0s)
+  ✓   7 e2e/app.spec.ts:365:5 › try it for a minute, once (5.8s)
+  ✓   8 e2e/app.spec.ts:386:5 › updates: up to date, then a verified download of a new version, and a tampered one (3.7s)
+  ✓   9 e2e/app.spec.ts:431:5 › the settings window is locked down (3.8s)
+
+  ✘  10 e2e/mac.spec.ts:100:5 › real windows: CoreGraphics sees them, snow piles on them and flies off when they move (34.4s)
+
+  ✓  11 e2e/mac.spec.ts:176:5 › wallpaper is really set on every screen, without a permission prompt (9.9s)
+  ✓  12 e2e/mac.spec.ts:199:5 › Low Power Mode and the Dock (5.5s)
+
+
+  1) e2e/app.spec.ts:177:5 › battery saver, pauses and full-screen apps ────────────────────────────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    Call Log:
+    - Timeout 15000ms exceeded while waiting on the predicate
+
+      210 |
+      211 |     writeWindows(ctx, [{ id: 'video', x: 0, y: 0, w: 1440, h: 900 }]);
+    > 212 |     await expect.poll(async () => (await overlayStats(ctx.app)).config.paused).toBe(true);
+          |                                                                                ^
+      213 |     await expect.poll(async () => (await hooks<any[]>(ctx.app, 'menu'))[0].label).toMatch(/paused for full screen/);
+      214 |     await expect.poll(async () => (await overlayStats(ctx.app)).running).toBe(false);
+      215 |     writeWindows(ctx, [{ id: 'editor', x: 300, y: 260, w: 760, h: 420 }]);
+        at /Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop/e2e/app.spec.ts:212:80
+
+    Error Context: test-results/app-battery-saver-pauses-and-full-screen-apps/error-context.md
+
+  2) e2e/mac.spec.ts:100:5 › real windows: CoreGraphics sees them, snow piles on them and flies off when they move 
+
+    Error: expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 45
+    Received:    30
+
+      167 |     report.performance = { fps, quality, metrics };
+      168 |     const sorted = [...fps].sort((a, b) => a - b);
+    > 169 |     expect(sorted[Math.floor(sorted.length / 2)]).toBeGreaterThanOrEqual(45); // median
+          |                                                   ^
+      170 |   } finally {
+      171 |     await app.close();
+      172 |     helper.stop();
+        at /Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop/e2e/mac.spec.ts:169:51
+
+    Error Context: test-results/mac-real-windows-CoreGraph-5da15-nd-flies-off-when-they-move/error-context.md
+
+    Error Context: test-results/mac-real-windows-CoreGraph-5da15-nd-flies-off-when-they-move/error-context.md
+
+  2 failed
+    e2e/app.spec.ts:177:5 › battery saver, pauses and full-screen apps ─────────────────────────────
+    e2e/mac.spec.ts:100:5 › real windows: CoreGraphics sees them, snow piles on them and flies off when they move 
+  10 passed (2.0m)

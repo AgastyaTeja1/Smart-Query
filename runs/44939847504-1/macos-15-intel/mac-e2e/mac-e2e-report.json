@@ -1,0 +1,25 @@
+{
+  "wallpaperBefore": [
+    "/System/Library/Desktop Pictures/Solid Colors/Black.png"
+  ],
+  "wallpaperResult": {
+    "ok": true
+  },
+  "wallpaperAfter": [
+    "/Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop/e2e/.tmp/mac-GRbsKj/data/wallpapers/autumn.jpg"
+  ],
+  "dock": {
+    "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    "workArea": {
+      "x": 0,
+      "y": 25,
+      "width": 1920,
+      "height": 970
+    }
+  }
+}
