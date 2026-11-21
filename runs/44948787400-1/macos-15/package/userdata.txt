@@ -1,0 +1,20 @@
+total 192
+drwx------  19 runner  staff    608 Nov 21 21:01 .
+drwx------+ 35 runner  staff   1120 Nov 21 21:01 ..
+drwx------   3 runner  staff     96 Nov 21 21:01 blob_storage
+drwx------   4 runner  staff    128 Nov 21 21:01 Cache
+drwx------   4 runner  staff    128 Nov 21 21:01 Code Cache
+drwx------   7 runner  staff    224 Nov 21 21:01 DawnGraphiteCache
+drwx------   7 runner  staff    224 Nov 21 21:01 DawnWebGPUCache
+-rw-------   1 runner  staff   4096 Nov 21 21:01 DIPS
+-rw-------   1 runner  staff  45352 Nov 21 21:01 DIPS-wal
+drwx------   7 runner  staff    224 Nov 21 21:01 GPUCache
+drwx------   3 runner  staff     96 Nov 21 21:01 Local Storage
+-rw-------   1 runner  staff     59 Nov 21 21:01 Network Persistent State
+-rw-------   1 runner  staff     77 Nov 21 21:01 Preferences
+drwx------   5 runner  staff    160 Nov 21 21:01 Shared Dictionary
+lrwxr-xr-x   1 runner  staff     19 Nov 21 21:01 SingletonCookie -> 8854901936638072208
+lrwxr-xr-x   1 runner  staff     73 Nov 21 21:01 SingletonLock -> iad20-fj923-7c6bcc8d-de0e-4e8d-ac62-1b60b4a47748-CAB24CB2DB43.local-44015
+lrwxr-xr-x   1 runner  staff     81 Nov 21 21:01 SingletonSocket -> /var/folders/9d/l02zfgrs7c16twd3wbpdmhkc0000gn/T/scoped_dirNHBbSN/SingletonSocket
+-rw-------   1 runner  staff  36864 Nov 21 21:01 Trust Tokens
+-rw-------   1 runner  staff      0 Nov 21 21:01 Trust Tokens-journal
