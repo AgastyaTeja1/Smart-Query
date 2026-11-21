@@ -132,7 +132,17 @@ test('fireflies come to a resting pointer; leaves fly from a sweeping one', asyn
   const fb = (await ff.boundingBox())!;
   await page.mouse.move(fb.x + fb.width * 0.8, fb.y + fb.height * 0.3);
   await page.mouse.move(fb.x + fb.width * 0.8 + 1, fb.y + fb.height * 0.3 + 1);
-  await expect.poll(async () => (await sceneStats(page, 'effect-fireflies'))!.gathered, { timeout: 15_000 }).toBeGreaterThan(5);
+  // most of the card's fireflies come to the resting pointer
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const f = (window as any).__scenes['effect-fireflies'].engine.active;
+          return f.gatheredCount() / f.flies.length;
+        }),
+      { timeout: 15_000 },
+    )
+    .toBeGreaterThanOrEqual(0.5);
 
   const lv = page.locator('[data-testid=effect-leaves]');
   await lv.scrollIntoViewIfNeeded();

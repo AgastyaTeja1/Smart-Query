@@ -51,7 +51,7 @@ jobs:
       - name: Machine
         run: |
           mkdir -p "$RESULTS"
-          { sw_vers; uname -m; sysctl -n machdep.cpu.brand_string; system_profiler SPDisplaysDataType | grep -E 'Resolution|Display Type|Main Display' ; } > "$RESULTS/machine.txt" 2>&1 || true
+          { sw_vers; uname -m; sysctl -n machdep.cpu.brand_string; system_profiler SPDisplaysDataType | grep -E 'Resolution|Display Type|Main Display'; pmset -g; } > "$RESULTS/machine.txt" 2>&1 || true
           cat "$RESULTS/machine.txt"
 
       - name: Install
@@ -89,8 +89,7 @@ jobs:
           NOTARIZE=false
           if [ -n "$CSC_LINK" ] && [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then NOTARIZE=true; fi
           echo "signing: $([ -n "$CSC_LINK" ] && echo Developer ID || echo ad hoc), notarize: $NOTARIZE" | tee "$RESULTS/signing.txt"
-          IDENTITY=""; if [ -z "$CSC_LINK" ]; then IDENTITY="-c.mac.identity=-"; fi
-          npx electron-builder --mac --publish never -c.mac.notarize=$NOTARIZE $IDENTITY 2>&1 | tee "$RESULTS/package.txt"; exit ${PIPESTATUS[0]}
+          npx electron-builder --mac --publish never -c.mac.notarize=$NOTARIZE 2>&1 | tee "$RESULTS/package.txt"; exit ${PIPESTATUS[0]}
 
       - name: Verify the DMG like a customer
         id: verify

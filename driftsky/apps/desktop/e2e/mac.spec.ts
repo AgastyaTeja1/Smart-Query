@@ -164,9 +164,13 @@ test('real windows: CoreGraphics sees them, snow piles on them and flies off whe
       quality.push(st.quality);
     }
     const metrics = await app.evaluate(({ app }) => app.getAppMetrics().map((m) => ({ type: m.type, cpu: m.cpu.percentCPUUsage, memMB: Math.round(m.memory.workingSetSize / 1024) })));
-    report.performance = { fps, quality, metrics };
+    const st = await stats(app);
+    const target = st.config.lowPower ? 30 : 60; // battery saver / Low Power Mode caps at 30
+    const power = await hook<any>(app, 'state');
+    report.performance = { fps, quality, metrics, target, lowPowerMode: power.lowPowerMode, onBattery: power.onBattery };
     const sorted = [...fps].sort((a, b) => a - b);
-    expect(sorted[Math.floor(sorted.length / 2)]).toBeGreaterThanOrEqual(45); // median
+    // smooth for its target: the median frame rate within 25% of it
+    expect(sorted[Math.floor(sorted.length / 2)]).toBeGreaterThanOrEqual(target * 0.75);
   } finally {
     await app.close();
     helper.stop();

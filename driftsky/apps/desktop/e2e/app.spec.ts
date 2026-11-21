@@ -183,6 +183,9 @@ test('battery saver, pauses and full-screen apps', async ({ request }) => {
     await page.getByLabel('License key').fill(key);
     await page.getByRole('button', { name: 'Activate' }).click();
     await page.getByRole('button', { name: 'Done' }).click();
+    // start from known power state, whatever the test machine reports
+    await hooks(ctx.app, 'setBattery', false);
+    await hooks(ctx.app, 'setLowPowerMode', false);
     await hooks(ctx.app, 'runMenu', 'effect-snow');
     // a full screen of snow for this display's size
     await expect.poll(async () => (await overlayStats(ctx.app)).particles, { timeout: 15_000 }).toBeGreaterThan(80);
@@ -208,7 +211,9 @@ test('battery saver, pauses and full-screen apps', async ({ request }) => {
     await hooks(ctx.app, 'power', 'unlock-screen');
     await expect.poll(async () => (await overlayStats(ctx.app)).running).toBe(true);
 
-    writeWindows(ctx, [{ id: 'video', x: 0, y: 0, w: 1440, h: 900 }]);
+    const db = (await primaryDisplay(ctx.app)).bounds;
+    const video = { id: 'video', x: db.x, y: db.y, w: db.width, h: db.height };
+    writeWindows(ctx, [video]);
     await expect.poll(async () => (await overlayStats(ctx.app)).config.paused).toBe(true);
     await expect.poll(async () => (await hooks<any[]>(ctx.app, 'menu'))[0].label).toMatch(/paused for full screen/);
     await expect.poll(async () => (await overlayStats(ctx.app)).running).toBe(false);
@@ -216,7 +221,7 @@ test('battery saver, pauses and full-screen apps', async ({ request }) => {
     await expect.poll(async () => (await overlayStats(ctx.app)).running).toBe(true);
     // the user can opt out of pausing for full screen
     await page.getByRole('switch', { name: /Pause for full-screen apps/ }).click();
-    writeWindows(ctx, [{ id: 'video', x: 0, y: 0, w: 1440, h: 900 }]);
+    writeWindows(ctx, [video]);
     await page.waitForTimeout(500);
     expect((await overlayStats(ctx.app)).running).toBe(true);
   } finally {
