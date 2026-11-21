@@ -158,17 +158,37 @@ describe('QualityGovernor', () => {
     expect(g.update(30, 60, 1.9)).toBe(false); // not slow long enough yet
     expect(g.update(30, 60, 0.2)).toBe(true);
     expect(g.scale).toBe(0.8);
-    for (let i = 0; i < 50; i++) g.update(20, 60, 1);
-    expect(g.scale).toBe(0.4);
-    expect(g.update(59, 60, 7)).toBe(false);
-    expect(g.update(59, 60, 1)).toBe(true);
-    expect(g.scale).toBeGreaterThan(0.4);
+    // each step buys frames: keep stepping down, to the floor at most
+    let fps = 30;
+    for (let i = 0; i < 50; i++) g.update((fps = Math.min(46, fps + 3)), 60, 1);
+    expect(g.scale).toBeLessThan(0.8);
+    expect(g.scale).toBeGreaterThanOrEqual(0.4);
+    // gains stopped at 46 fps: it stays thinned there instead of giving the frames back
+    const plateau = g.scale;
+    expect(g.ceiling).toBe(46);
+    for (let i = 0; i < 20; i++) g.update(46, 60, 1);
+    expect(g.scale).toBeGreaterThanOrEqual(plateau);
+    expect(g.scale).toBeLessThan(1);
+    // a heavier load where frames do scale with the amount: thins as far as it helps, to the floor
+    const h = new QualityGovernor(0.4, 2, 8);
+    for (let i = 0; i < 80; i++) h.update(Math.min(60, 22 / h.scale), 60, 1);
+    expect(h.scale).toBeGreaterThanOrEqual(0.4);
+    expect(Math.min(60, 22 / h.scale)).toBeGreaterThanOrEqual(60 * 0.8); // smooth, and thinned no further than needed
+    // smooth again for a while: the weather comes back
+    const low = g.scale;
     for (let i = 0; i < 200; i++) g.update(60, 60, 1);
-    expect(g.scale).toBe(1);
+    expect(g.scale).toBeGreaterThan(low);
     // a 30 fps target (battery) is judged against 30, not 60
     const b = new QualityGovernor();
     for (let i = 0; i < 10; i++) b.update(30, 30, 1);
     expect(b.scale).toBe(1);
+    // a display that can't go faster (30 Hz): thinning doesn't help, so keep the full amount
+    const d = new QualityGovernor(0.4, 2, 8);
+    for (let i = 0; i < 20; i++) d.update(30, 60, 1);
+    expect(d.ceiling).toBe(30);
+    expect(d.scale).toBe(1);
+    for (let i = 0; i < 20; i++) d.update(30, 60, 1);
+    expect(d.scale).toBe(1);
     // nonsense input is ignored
     expect(b.update(NaN, 60, 1)).toBe(false);
     expect(b.update(10, 60, -1)).toBe(false);

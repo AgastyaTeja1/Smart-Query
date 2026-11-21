@@ -86,8 +86,17 @@ test('the hero demo has snow piled up, and dragging the window throws it off', a
   const hint = page.locator('.drag-hint');
   await expect(hint).not.toHaveClass(/gone/);
 
-  // grab the window and fling it sideways
+  // grab the window and fling it sideways (once the smooth scroll has come to rest)
   const win = page.locator('[data-testid=hero] [data-win=notes]');
+  let last = -1;
+  await expect
+    .poll(async () => {
+      const y = (await win.boundingBox())!.y;
+      const still = Math.abs(y - last) < 0.5;
+      last = y;
+      return still;
+    })
+    .toBe(true);
   const box = (await win.boundingBox())!;
   const sx = box.x + box.width / 2;
   const sy = box.y + 12;

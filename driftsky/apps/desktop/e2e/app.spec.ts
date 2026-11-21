@@ -130,7 +130,7 @@ test('first run: onboarding, activation, choosing weather, and the overlay', asy
     const st = await overlayStats(ctx.app);
     expect(st.running).toBe(true);
     expect(st.surfaces).toBeGreaterThanOrEqual(2); // the window + bottom of the screen
-    expect(st.worldFrames).toBeGreaterThan(10);
+    await expect.poll(async () => (await overlayStats(ctx.app)).worldFrames).toBeGreaterThan(10);
 
     const menu = await hooks<any[]>(ctx.app, 'menu');
     expect(menu[0].label).toBe('Rain');
