@@ -6,7 +6,7 @@ name: Driftsky macOS
 # Logs, reports and screenshots are pushed to the `driftsky-mac-ci` branch.
 on:
   push:
-    branches: [feature/driftsky-desktop-weather, claude/koiart-app-clone-5r0adx, main]
+    branches: [feature/driftsky-desktop-weather, main]
     paths: ['driftsky/**', '.github/workflows/driftsky-mac.yml']
   workflow_dispatch:
 
@@ -22,7 +22,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, macos-14]
+        # Apple silicon on Sequoia and Tahoe, and a real Intel Mac
+        os: [macos-15, macos-26, macos-15-intel]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 75
     defaults:
