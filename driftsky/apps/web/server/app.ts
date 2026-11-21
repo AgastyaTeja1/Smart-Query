@@ -6,7 +6,7 @@ import { PLANS, type Config, type PlanId } from './config';
 import type { DB } from './db';
 import { LicenseService, normalizeKey, type LicenseError } from './licenses';
 import type { Mailer } from './mailer';
-import { Orders } from './orders';
+import { Orders, PermanentWebhookError } from './orders';
 import { verifyStripeSignature, type PaymentProvider } from './payments';
 import { rateLimit } from './ratelimit';
 import type { ReleaseStore } from './releases';
@@ -124,7 +124,7 @@ export function createApp(deps: AppDeps) {
           // 'no_payment_required': a 100%-off promotion code still earns a key
           if (o.payment_status === 'paid' || o.payment_status === 'no_payment_required' || event.type === 'checkout.session.async_payment_succeeded') {
             const email = o.customer_details?.email ?? o.customer_email;
-            if (!email) throw new Error(`no email on session ${o.id}`);
+            if (!email) throw new PermanentWebhookError(`no email on session ${o.id}`);
             await orders.fulfil({
               sessionId: o.id,
               plan: o.metadata?.plan,
@@ -158,6 +158,11 @@ export function createApp(deps: AppDeps) {
       db.prepare('INSERT OR IGNORE INTO webhook_events (id, type) VALUES (?, ?)').run(event.id, event.type);
       res.json({ received: true });
     } catch (e) {
+      if (e instanceof PermanentWebhookError) {
+        console.error('[webhook] ignoring unusable event', event.id, event.type, e.message);
+        db.prepare('INSERT OR IGNORE INTO webhook_events (id, type) VALUES (?, ?)').run(event.id, event.type);
+        return res.json({ received: true, ignored: true });
+      }
       console.error('[webhook]', event.type, (e as Error).message);
       // non-2xx makes Stripe retry later
       res.status(500).json({ error: 'processing_failed' });

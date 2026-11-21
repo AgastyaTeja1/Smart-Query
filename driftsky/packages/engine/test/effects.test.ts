@@ -382,7 +382,8 @@ describe('Starfall at any screen size', () => {
       e.resize(w, h);
       e.setWindows([win('a', w * 0.2, h * 0.5, w * 0.5, h * 0.3)]);
       run(e, 20);
-      expect(e.stats().bursts).toBeGreaterThan(8);
+      // most meteors land (on a window or the ground) rather than being culled off-screen
+      expect(e.stats().bursts).toBeGreaterThan(12);
     }
   });
 });

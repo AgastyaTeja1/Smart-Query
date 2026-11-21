@@ -48,7 +48,9 @@ export class Starfall extends Effect {
     // scale to the screen so meteors cross it in about a second, whatever its size
     const diag = Math.hypot(w.width, w.height);
     const speed = r.range(0.45, 0.75) * Math.max(500, diag);
-    const angle = r.range(0.45, 0.9); // radians below horizontal
+    // radians below horizontal; tall screens get steeper meteors so they cross the screen, not beside it
+    const minAngle = Math.min(1.3, Math.max(0.45, Math.atan(w.height / (1.4 * w.width))));
+    const angle = r.range(minAngle, Math.min(1.45, Math.max(0.9, minAngle + 0.3)));
     const vx = Math.cos(angle) * speed * this.dir;
     const vy = Math.sin(angle) * speed;
     const y0 = r.range(-40, -10);

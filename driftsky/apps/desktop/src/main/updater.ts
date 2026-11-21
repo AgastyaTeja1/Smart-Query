@@ -109,8 +109,7 @@ export class Updater {
     this.file = null;
     this.set({ status: 'downloading', progress: 0, message: null });
     const ext = path.extname(new URL(m.url).pathname) || (this.platform === 'windows' ? '.exe' : '.dmg');
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'driftsky-update-'));
-    const dest = path.join(dir, `Driftsky-${m.latest}${ext}`);
+    let dir = '';
     const ctrl = new AbortController();
     let stall: NodeJS.Timeout | undefined;
     const kick = () => {
@@ -118,6 +117,9 @@ export class Updater {
       stall = setTimeout(() => ctrl.abort(), this.stallMs);
     };
     try {
+      // inside the try: a full or missing temp folder is an error message, not a stuck "Downloading…"
+      dir = fs.mkdtempSync(path.join(os.tmpdir(), 'driftsky-update-'));
+      const dest = path.join(dir, `Driftsky-${m.latest}${ext}`);
       kick();
       const r = await this.fetchImpl(m.url, { signal: ctrl.signal });
       if (!r.ok || !r.body) throw new Error('download');
@@ -143,7 +145,7 @@ export class Updater {
       await pipeline(Readable.fromWeb(r.body as never), meter, fs.createWriteStream(dest), { signal: ctrl.signal });
       clearTimeout(stall);
       if (hash.digest('hex') !== m.sha256) {
-        fs.rmSync(dir, { recursive: true, force: true });
+        if (dir) fs.rmSync(dir, { recursive: true, force: true });
         this.set({ status: 'error', progress: null, message: 'The download didn’t match the release, so nothing was installed.' });
         return this.state;
       }
@@ -157,7 +159,7 @@ export class Updater {
       if (err) this.set({ status: 'error', message: 'Downloaded, but the installer wouldn’t open. Try again.' });
     } catch {
       clearTimeout(stall);
-      fs.rmSync(dir, { recursive: true, force: true });
+      if (dir) fs.rmSync(dir, { recursive: true, force: true });
       this.set({
         status: 'error',
         progress: null,

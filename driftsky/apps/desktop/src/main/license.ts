@@ -184,7 +184,9 @@ export class LicenseManager {
     if (!definite) {
       // offline, server trouble, or something in the way (captive portal, proxy): fine within the grace period
       let last = this.state.checkedAt ? Date.parse(this.state.checkedAt) : 0;
-      if (!Number.isFinite(last) || last > Date.now()) last = 0; // a date from the future doesn't extend it
+      // clocks drift a little; a date far in the future (edited file, broken clock) doesn't extend the grace
+      if (!Number.isFinite(last) || last > Date.now() + 2 * 86_400_000) last = 0;
+      else if (last > Date.now()) last = Date.now();
       const days = (Date.now() - last) / 86_400_000;
       if (this.state.status === 'active' && days > OFFLINE_GRACE_DAYS) {
         this.set({

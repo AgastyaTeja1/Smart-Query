@@ -72,9 +72,12 @@ export class Store {
       }
     }
     const obj = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+    let license = licenseSchema.parse(obj(raw.license)) as LicenseState;
+    // a license is only ever active with a key (anything else is a damaged or edited file)
+    if (!license.key || !/^DRIFT-[0-9A-Z]{4}(-[0-9A-Z]{4}){3}$/.test(license.key)) license = { ...EMPTY_LICENSE };
     return {
       settings: settingsSchema.parse(obj(raw.settings)) as Settings,
-      license: licenseSchema.parse(obj(raw.license)) as LicenseState,
+      license,
       preview: { used: !!(raw.preview as { used?: boolean } | undefined)?.used },
       fallbackId: typeof raw.fallbackId === 'string' ? raw.fallbackId : undefined,
     };

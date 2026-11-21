@@ -384,14 +384,15 @@ describe('stripe webhook', () => {
     expect((t.db.prepare('SELECT status FROM licenses').get() as { status: string }).status).toBe('active');
   });
 
-  it('asks Stripe to retry when it cannot process', async () => {
+  it('acknowledges events that can never work, instead of letting Stripe retry for days', async () => {
     const r = await send({
       id: 'evt_bad',
       type: 'checkout.session.completed',
       data: { object: { id: 'cs_test_7', payment_status: 'paid', metadata: { plan: 'one' } } },
     });
-    expect(r.status).toBe(500); // no email: retry later rather than lose the sale
-    expect(t.db.prepare('SELECT COUNT(*) AS n FROM webhook_events').get()).toEqual({ n: 0 });
+    expect(r.status).toBe(200);
+    expect(r.body.ignored).toBe(true);
+    expect(t.db.prepare('SELECT COUNT(*) AS n FROM licenses').get()).toEqual({ n: 0 });
   });
 
   it('ignores unrelated events', async () => {
@@ -553,7 +554,7 @@ describe('review fixes', () => {
       type: 'checkout.session.completed',
       data: { object: { id: 'cs_test_p', payment_status: 'paid', customer_details: { email: 'p@example.com' }, metadata: { plan: 'toString' } } },
     });
-    expect((await sendTo(t, ev)).status).toBe(500);
+    expect((await sendTo(t, ev)).body.ignored).toBe(true);
     expect(t.db.prepare('SELECT COUNT(*) AS n FROM licenses').get()).toEqual({ n: 0 });
   });
 

@@ -421,6 +421,7 @@ function registerIpc() {
   handle('set-settings', (patch: unknown) => {
     const p = settingsPatch.safeParse(patch);
     if (!p.success) return { ok: false, message: 'Invalid setting.' };
+    if (p.data.behindWindows !== undefined && !CAN_GO_BEHIND) return { ok: false, message: 'Behind windows is available on Mac.' };
     const before = store.data.settings;
     const next = store.updateSettings(p.data as Partial<Settings>);
     if (p.data.openAtLogin !== undefined) applyLoginItem(next.openAtLogin);

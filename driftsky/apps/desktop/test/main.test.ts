@@ -500,3 +500,50 @@ describe('review and QA fixes', () => {
     expect((await u.check(true)).status).toBe('available'); // not stuck in "downloading"
   });
 });
+
+describe('re-verification fixes', () => {
+  it('a little clock skew doesn’t lock anyone out offline', async () => {
+    const store = new Store(tmp());
+    const srv = fakeServer();
+    const lm = new LicenseManager(store, 'http://api', 'mac', '1.0.0', () => undefined, srv.f, 'skew-device');
+    await lm.activate('DRIFT-AAAA-BBBB-CCCC-DDDD');
+    store.setLicense({ ...store.data.license, checkedAt: new Date(Date.now() + 3600_000).toISOString() });
+    srv.setOnline(false);
+    await lm.validate();
+    expect(lm.isLicensed).toBe(true);
+  });
+  it('an edited store can’t be active without a key', () => {
+    for (const license of [
+      { status: 'active', key: null },
+      { status: 'active', key: 42 },
+      { status: 'active', key: 'free' },
+    ]) {
+      const dir = tmp();
+      fs.writeFileSync(path.join(dir, 'driftsky.json'), JSON.stringify({ license }));
+      expect(new Store(dir).data.license.status).toBe('none');
+    }
+  });
+  it('an unusable temp folder is an error, not a stuck download', async () => {
+    const manifest = { latest: '1.1.0', minimum: '1.0.0', url: 'https://dl/x.dmg', sha256: 'a'.repeat(64) };
+    const f = (async () => new Response(JSON.stringify(manifest))) as unknown as typeof fetch;
+    const u = new Updater(
+      'http://api',
+      'mac',
+      '1.0.0',
+      () => undefined,
+      async () => '',
+      f,
+    );
+    await u.check(true);
+    const prev = process.env.TMPDIR;
+    const file = path.join(tmp(), 'not-a-dir');
+    fs.writeFileSync(file, 'x');
+    process.env.TMPDIR = file;
+    try {
+      expect((await u.install()).status).toBe('error');
+    } finally {
+      process.env.TMPDIR = prev;
+    }
+    expect((await u.check(true)).status).toBe('available');
+  });
+});

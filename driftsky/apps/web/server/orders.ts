@@ -18,6 +18,9 @@ export interface SessionRow {
  * Turns paid checkouts into keys and emails. Every step is idempotent so Stripe retries,
  * duplicate events and a success-page race can't create two keys or two emails.
  */
+/** The event can never succeed (bad data): acknowledge it so Stripe stops retrying, and log it. */
+export class PermanentWebhookError extends Error {}
+
 export class Orders {
   constructor(
     private db: DB,
@@ -42,7 +45,7 @@ export class Orders {
     const email = p.email.trim();
     const known = this.session(p.sessionId);
     const plan = (known?.plan ?? p.plan) as PlanId | undefined;
-    if (!plan || !Object.hasOwn(PLANS, plan)) throw new Error(`unknown plan for session ${p.sessionId}`);
+    if (!plan || !Object.hasOwn(PLANS, plan)) throw new PermanentWebhookError(`unknown plan for session ${p.sessionId}`);
     if (known?.status === 'paid' && known.license_id) return this.licenses.byId(known.license_id) ?? null;
 
     let license: License | undefined;
@@ -52,7 +55,7 @@ export class Orders {
         : p.upgradeKey
           ? this.licenses.byKey(normalizeKey(p.upgradeKey) ?? '')
           : undefined;
-      if (!target) throw new Error(`upgrade target missing for ${p.sessionId}`);
+      if (!target) throw new PermanentWebhookError(`upgrade target missing for ${p.sessionId}`);
       const before = target.seats;
       license = this.licenses.upgrade(target.id, p.paymentIntent);
       if (license && before < license.seats) await this.mail(license.email, upgradeEmail({ key: license.key, support: this.cfg.SUPPORT_EMAIL }));
