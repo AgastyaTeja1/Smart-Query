@@ -59,10 +59,12 @@ jobs:
         run: npm ci
 
       - name: Unit tests
+        timeout-minutes: 10
         id: unit
         run: npm test 2>&1 | tee "$RESULTS/unit-tests.txt"; exit ${PIPESTATUS[0]}
 
       - name: Build
+        timeout-minutes: 15
         id: build
         run: |
           npm run build -w @driftsky/web 2>&1 | tail -5
@@ -70,18 +72,21 @@ jobs:
           npx playwright install chromium
 
       - name: Desktop end to end (incl. real macOS windows)
+        timeout-minutes: 20
         id: desktop_e2e
         if: steps.build.outcome == 'success'
         working-directory: driftsky/apps/desktop
         run: MAC_RESULTS="$RESULTS/mac-e2e" npx playwright test --trace off --reporter=list app.spec mac.spec 2>&1 | tee "$RESULTS/desktop-e2e.txt"; exit ${PIPESTATUS[0]}
 
       - name: Website end to end (Chromium on macOS)
+        timeout-minutes: 15
         id: web_e2e
         if: steps.build.outcome == 'success' && !cancelled()
         working-directory: driftsky/apps/web
         run: npx playwright test --trace off --reporter=list 2>&1 | tee "$RESULTS/web-e2e.txt"; exit ${PIPESTATUS[0]}
 
       - name: Package (universal DMG)
+        timeout-minutes: 25
         id: package
         if: steps.build.outcome == 'success' && !cancelled()
         working-directory: driftsky/apps/desktop
@@ -93,6 +98,7 @@ jobs:
           npx electron-builder --mac --publish never -c.mac.notarize=$NOTARIZE 2>&1 | tee "$RESULTS/package.txt"; exit ${PIPESTATUS[0]}
 
       - name: Verify the DMG like a customer
+        timeout-minutes: 15
         id: verify
         if: steps.package.outcome == 'success' && !cancelled()
         working-directory: driftsky/apps/desktop
