@@ -1,0 +1,181 @@
+{
+  "windowList": {
+    "helper": {
+      "x": 300,
+      "y": 260,
+      "width": 760,
+      "height": 420
+    },
+    "list": [
+      {
+        "id": "131",
+        "x": 300,
+        "y": 260,
+        "w": 760,
+        "h": 420
+      }
+    ]
+  },
+  "overlays": [
+    {
+      "onTop": true,
+      "allSpaces": true,
+      "hiddenInMC": true,
+      "focusable": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      }
+    }
+  ],
+  "displays": [
+    {
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "workArea": {
+        "x": 0,
+        "y": 25,
+        "width": 1920,
+        "height": 970
+      },
+      "scale": 1
+    }
+  ],
+  "snowSettled": {
+    "effect": "snow",
+    "particles": 301,
+    "piled": 1782,
+    "resting": 0,
+    "landed": 30,
+    "shed": 0,
+    "splashes": 0,
+    "bursts": 0,
+    "lightning": 0,
+    "gathered": 0,
+    "surfaces": 3,
+    "fps": 30,
+    "running": true,
+    "worldFrames": 114,
+    "msSinceWorld": 42,
+    "config": {
+      "effect": "snow",
+      "intensity": 1.6,
+      "lowPower": false,
+      "paused": false
+    },
+    "quality": 0.512,
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "afterFling": {
+    "effect": "snow",
+    "particles": 475,
+    "piled": 1111,
+    "resting": 0,
+    "landed": 37,
+    "shed": 638,
+    "splashes": 0,
+    "bursts": 0,
+    "lightning": 0,
+    "gathered": 0,
+    "surfaces": 3,
+    "fps": 31,
+    "running": true,
+    "worldFrames": 144,
+    "msSinceWorld": 11,
+    "config": {
+      "effect": "snow",
+      "intensity": 1.6,
+      "lowPower": false,
+      "paused": false
+    },
+    "quality": 0.41,
+    "size": [
+      1920,
+      1080
+    ]
+  },
+  "performance": {
+    "fps": [
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30,
+      30
+    ],
+    "quality": [
+      0.4,
+      0.4,
+      0.4,
+      0.4,
+      0.4,
+      0.4,
+      0.4,
+      0.4,
+      0.4,
+      0.4
+    ],
+    "metrics": [
+      {
+        "type": "Browser",
+        "cpu": 0,
+        "memMB": 132
+      },
+      {
+        "type": "GPU",
+        "cpu": 0,
+        "memMB": 101
+      },
+      {
+        "type": "Utility",
+        "cpu": 0,
+        "memMB": 27
+      },
+      {
+        "type": "Tab",
+        "cpu": 0,
+        "memMB": 115
+      }
+    ],
+    "baseline": 28,
+    "target": 28,
+    "lowPowerMode": false,
+    "onBattery": false
+  },
+  "wallpaperBefore": [
+    "/System/Library/Desktop Pictures/Solid Colors/Black.png"
+  ],
+  "wallpaperResult": {
+    "ok": true
+  },
+  "wallpaperAfter": [
+    "/Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop/e2e/.tmp/mac-L0DpjZ/data/wallpapers/autumn.jpg"
+  ],
+  "dock": {
+    "bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    "workArea": {
+      "x": 0,
+      "y": 25,
+      "width": 1920,
+      "height": 970
+    }
+  }
+}

@@ -1,0 +1,94 @@
+
+> driftsky@1.0.0 test
+> npm run test -w @driftsky/engine && npm run test -w @driftsky/web && npm run test -w @driftsky/desktop
+
+
+> @driftsky/engine@1.0.0 test
+> vitest run
+
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90m/Users/runner/work/Smart-Query/Smart-Query/driftsky/packages/engine[39m
+
+ [32m✓[39m test/core.test.ts [2m([22m[2m13 tests[22m[2m)[22m[90m 190[2mms[22m[39m
+ [32m✓[39m test/effects.test.ts [2m([22m[2m29 tests[22m[2m)[22m[33m 2625[2mms[22m[39m
+   [33m[2m✓[22m[39m Snow[2m > [22mflies off when the window is dragged fast and resettles elsewhere [33m303[2mms[22m[39m
+   [33m[2m✓[22m[39m WeatherEngine[2m > [22mdraws every effect without errors, with and without sprites [33m450[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m42 passed[39m[22m[90m (42)[39m
+[2m   Start at [22m 20:47:06
+[2m   Duration [22m 3.40s[2m (transform 293ms, setup 0ms, collect 536ms, tests 2.81s, environment 1ms, prepare 233ms)[22m
+
+
+> @driftsky/web@1.0.0 test
+> vitest run
+
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90m/Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/web[39m
+
+(node:9311) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+[90mstderr[2m | test/server.test.ts[2m > [22m[2mstripe webhook[2m > [22m[2macknowledges events that can never work, instead of letting Stripe retry for days
+[22m[39m[webhook] ignoring unusable event evt_bad checkout.session.completed no email on session cs_test_7
+
+[90mstderr[2m | test/server.test.ts[2m > [22m[2mreleases & downloads[2m > [22m[2mignores a malformed releases file, keeping the last good one
+[22m[39m[releases] ignoring invalid /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/ds-a4AYkE/releases.json [
+  {
+    "validation": "regex",
+    "code": "invalid_string",
+    "message": "Invalid",
+    "path": [
+      "mac",
+      "latest"
+    ]
+  },
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "mac",
+      "url"
+    ],
+    "message": "Required"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "mac",
+      "sha256"
+    ],
+    "message": "Required"
+  }
+]
+
+[90mstderr[2m | test/server.test.ts[2m > [22m[2mreleases & downloads[2m > [22m[2mignores a malformed releases file, keeping the last good one
+[22m[39m[releases] ignoring invalid /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/ds-a4AYkE/releases.json Unterminated string in JSON at position 13 (line 1 column 14)
+
+[90mstderr[2m | test/server.test.ts[2m > [22m[2mreview fixes[2m > [22m[2mprototype names are not plans
+[22m[39m[webhook] ignoring unusable event evt_p checkout.session.completed unknown plan for session cs_test_p
+
+ [32m✓[39m test/server.test.ts [2m([22m[2m45 tests[22m[2m)[22m[33m 1366[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m45 passed[39m[22m[90m (45)[39m
+[2m   Start at [22m 20:47:11
+[2m   Duration [22m 2.68s[2m (transform 286ms, setup 0ms, collect 679ms, tests 1.37s, environment 0ms, prepare 122ms)[22m
+
+
+> @driftsky/desktop@1.0.0 test
+> vitest run
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90m/Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/desktop[39m
+
+ [32m✓[39m test/main.test.ts [2m([22m[2m33 tests[22m[2m)[22m[33m 488[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m33 passed[39m[22m[90m (33)[39m
+[2m   Start at [22m 20:47:15
+[2m   Duration [22m 1.92s[2m (transform 434ms, setup 0ms, collect 572ms, tests 488ms, environment 0ms, prepare 127ms)[22m
+

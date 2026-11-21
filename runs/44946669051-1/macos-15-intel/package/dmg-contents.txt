@@ -1,0 +1,9 @@
+total 696
+drwxr-xr-x@   8 runner  staff     340 Nov 21 20:52 .
+drwx------@ 170 runner  staff    5440 Nov 21 20:54 ..
+drwxr-xr-x    3 runner  staff     102 Nov 21 20:52 .background
+-rw-r--r--    1 runner  staff   16388 Nov 21 20:52 .DS_Store
+drwx------    5 runner  staff     170 Nov 21 20:52 .fseventsd
+-rw-r--r--@   1 runner  staff  329281 Nov 21 20:52 .VolumeIcon.icns
+lrwxr-xr-x    1 runner  staff      13 Nov 21 20:52 Applications -> /Applications
+drwxr-xr-x    3 runner  staff     102 Nov 21 20:51 Driftsky.app

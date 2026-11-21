@@ -1,0 +1,3 @@
+[20:54:06] mount
+[20:54:30] self-test native
+[20:54:30] first launch

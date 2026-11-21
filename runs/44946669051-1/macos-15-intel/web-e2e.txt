@@ -1,0 +1,73 @@
+[WebServer] 
+[WebServer]   dist/server.js  49.4kb
+[WebServer] 
+[WebServer] ⚡ Done in 57ms
+[WebServer] [warning] ALLOW_MOCK_PAYMENTS is on: test checkout and /dev/outbox (every email, including keys) are public. Use only for staging.
+
+Running 32 tests using 1 worker
+
+  ✓   1 [desktop] › e2e/site.spec.ts:41:1 › home page renders every section with no errors and no sideways scroll (1.2s)
+  ✓   2 [desktop] › e2e/site.spec.ts:58:1 › header navigation scrolls to each section (3.5s)
+  ✓   3 [desktop] › e2e/site.spec.ts:76:1 › the hero demo has snow piled up, and dragging the window throws it off (1.5s)
+  ✓   4 [desktop] › e2e/site.spec.ts:110:1 › every effect card runs its own weather (3.3s)
+  ✓   5 [desktop] › e2e/site.spec.ts:125:1 › fireflies come to a resting pointer; leaves fly from a sweeping one (4.7s)
+  ✓   6 [desktop] › e2e/site.spec.ts:158:1 › FAQ answers open and close independently, with accessible state (652ms)
+  ✓   7 [desktop] › e2e/site.spec.ts:179:1 › wallpaper preview opens full size and closes with Escape (720ms)
+  ✓   8 [desktop] › e2e/site.spec.ts:201:1 › cookie choice is remembered and can be changed (4.1s)
+  ✓   9 [desktop] › e2e/site.spec.ts:217:1 › buying a key end to end: checkout → thank-you page → email → activation (797ms)
+  ✓  10 [desktop] › e2e/site.spec.ts:246:1 › cheaper plan and leaving checkout without paying (758ms)
+  ✓  11 [desktop] › e2e/site.spec.ts:262:1 › thank-you page handles a missing or unknown order (372ms)
+  ✓  12 [desktop] › e2e/site.spec.ts:271:1 › lost key form (367ms)
+  ✓  13 [desktop] › e2e/site.spec.ts:279:1 › download buttons: friendly page before a release, redirect after (624ms)
+  ✓  14 [desktop] › e2e/site.spec.ts:304:1 › legal pages, client navigation, and a real 404 (914ms)
+  ✓  15 [desktop] › e2e/site.spec.ts:327:1 › production security headers are present (104ms)
+  ✓  16 [desktop] › e2e/site.spec.ts:337:3 › reduced motion › still shows a settled scene, without animating (1.2s)
+  ✓  17 [mobile] › e2e/site.spec.ts:41:1 › home page renders every section with no errors and no sideways scroll (688ms)
+  -  18 [mobile] › e2e/site.spec.ts:58:1 › header navigation scrolls to each section
+  ✘  19 [mobile] › e2e/site.spec.ts:76:1 › the hero demo has snow piled up, and dragging the window throws it off (12.0s)
+  ✓  20 [mobile] › e2e/site.spec.ts:110:1 › every effect card runs its own weather (2.4s)
+  -  21 [mobile] › e2e/site.spec.ts:125:1 › fireflies come to a resting pointer; leaves fly from a sweeping one
+  ✓  22 [mobile] › e2e/site.spec.ts:158:1 › FAQ answers open and close independently, with accessible state (894ms)
+  ✓  23 [mobile] › e2e/site.spec.ts:179:1 › wallpaper preview opens full size and closes with Escape (674ms)
+  ✓  24 [mobile] › e2e/site.spec.ts:201:1 › cookie choice is remembered and can be changed (4.5s)
+  ✓  25 [mobile] › e2e/site.spec.ts:217:1 › buying a key end to end: checkout → thank-you page → email → activation (687ms)
+  ✓  26 [mobile] › e2e/site.spec.ts:246:1 › cheaper plan and leaving checkout without paying (1.3s)
+  ✓  27 [mobile] › e2e/site.spec.ts:262:1 › thank-you page handles a missing or unknown order (335ms)
+  ✓  28 [mobile] › e2e/site.spec.ts:271:1 › lost key form (341ms)
+  ✓  29 [mobile] › e2e/site.spec.ts:279:1 › download buttons: friendly page before a release, redirect after (818ms)
+  ✓  30 [mobile] › e2e/site.spec.ts:304:1 › legal pages, client navigation, and a real 404 (918ms)
+  ✓  31 [mobile] › e2e/site.spec.ts:327:1 › production security headers are present (99ms)
+  ✓  32 [mobile] › e2e/site.spec.ts:337:3 › reduced motion › still shows a settled scene, without animating (1.4s)
+
+
+  1) [mobile] › e2e/site.spec.ts:76:1 › the hero demo has snow piled up, and dragging the window throws it off 
+
+    Error: expect(locator).toHaveClass(expected) failed
+
+    Locator: locator('.drag-hint')
+    Expected pattern: /gone/
+    Received string:  "drag-hint "
+    Timeout: 10000ms
+
+    Call log:
+      - Expect "toHaveClass" locator('.drag-hint') with timeout 10000ms
+      - waiting for locator('.drag-hint')
+        24 × locator resolved to <div class="drag-hint " aria-hidden="false">…</div>
+           - unexpected value "drag-hint "
+
+
+       98 |   }
+       99 |   await page.mouse.up();
+    > 100 |   await expect(hint).toHaveClass(/gone/);
+          |                      ^
+      101 |   await expect.poll(async () => (await sceneStats(page, 'hero'))!.shed, { timeout: 5000 }).toBeGreaterThan(5);
+      102 |   const after = (await sceneStats(page, 'hero'))!;
+      103 |   expect(after.winPile).toBeLessThan(before.winPile * 0.5);
+        at /Users/runner/work/Smart-Query/Smart-Query/driftsky/apps/web/e2e/site.spec.ts:100:22
+
+    Error Context: test-results/site-the-hero-demo-has-sno-4c475-ng-the-window-throws-it-off-mobile/error-context.md
+
+  1 failed
+    [mobile] › e2e/site.spec.ts:76:1 › the hero demo has snow piled up, and dragging the window throws it off 
+  2 skipped
+  29 passed (1.0m)
